@@ -44,7 +44,12 @@ class RedisMapConnectionManager
         static RedisConnection* getReadyRedisConnection(QString connectionName = "redis")
         {
             RedisConnection* rconnection = RedisMapConnectionManager::mapRedisConnections.value(connectionName);
-            return rconnection && rconnection->socket->state() == QAbstractSocket::ConnectedState ? rconnection : 0;
+            return RedisMapConnectionManager::checkRedisConnection(rconnection) ? rconnection : 0;
+        }
+
+        static bool checkRedisConnection(RedisConnection *redisConnection)
+        {
+            return redisConnection && redisConnection->socket->state() == QAbstractSocket::ConnectedState;
         }
 
     private:
@@ -57,15 +62,14 @@ class RedisMap
     public:
         RedisMap(QString list, QString connectionName = "redis")
         {
-            this->redisList = list;
-            this->redisCmd = QString("%2 %1.%3 ").arg(this->redisList);
+            this->redisList = list.toLocal8Bit() + ".";
             this->redisConnection = RedisMapConnectionManager::getReadyRedisConnection(connectionName);
         }
 
         bool insert(Key key, T value, bool waitForAnswer = false)
         {
             // if connection is not okay, exit
-            if(!this->redisConnection || this->redisConnection->socket->state() != QAbstractSocket::ConnectedState) return false;
+            if(!RedisMapConnectionManager::checkRedisConnection(this->redisConnection)) return false;
 
             // simplefy key and value
             QVariant vkey(key);
@@ -74,25 +78,43 @@ class RedisMap
             // if something is wrong with key and value, exit
             if(!vkey.isValid() || !vValue.isValid()) return false;
 
+            // build command
+            QByteArray cmd = this->buildRedisCommand({
+                                    "SET",
+                                    this->redisList.append(vkey.toByteArray()),
+                                    vValue.toByteArray()
+                                });
             // insert into redis
-            this->redisConnection->socket->write(this->redisCmd.arg("SET").arg(vkey.toString()).toLocal8Bit());
-            this->redisConnection->socket->write(vValue.toByteArray());
-            this->redisConnection->socket->write("\r\n");
-            this->redisConnection->socket->flush();
+            this->redisConnection->socket->write(cmd);
 
             // if user want to wait until redis server answers, so do it
             if(waitForAnswer) {
-                return this->redisConnection->socket->waitForBytesWritten() && this->redisConnection->socket->waitForReadyRead();
+                this->redisConnection->socket->waitForBytesWritten();
+                this->redisConnection->socket->waitForReadyRead();
             }
 
             // otherwise everything is okay
             return true;
         }
 
+        QByteArray buildRedisCommand(std::initializer_list<QByteArray> args)
+        {
+            QByteArray data;
+            char length[sizeof(int)*8+1+3];
+            sprintf(length, "*%d\r\n", args.size());
+            data += length;
+            for(QByteArray arg : args) {
+                sprintf(length, "$%d\r\n", arg.size());
+                data += length;
+                data += arg + "\r\n";
+            }
+            return data;
+        }
+
+
     private:
         RedisMapConnectionManager::RedisConnection *redisConnection;
-        QString redisList;
-        QString redisCmd;
+        QByteArray redisList;
 };
 
 #endif // REDISMAP_H
