@@ -1,60 +1,10 @@
 #ifndef REDISMAP_H
 #define REDISMAP_H
 
-#include <QMap>
 #include <QVariant>
-#include <QTcpSocket>
 
-class RedisMapConnectionManager
-{
-    public:
-        struct RedisConnection
-        {
-            QString redisServer;
-            qint16 redisPort;
-            QString connectionName;
-            QTcpSocket *socket = 0;
-        };
-
-        static bool initRedisConnection(QString redisServer, qint16 redisPort, QString connectionName = "redis")
-        {
-            // acquire redis connection
-            RedisConnection* conRedis = RedisMapConnectionManager::mapRedisConnections.take(connectionName);
-            if(!conRedis) conRedis = new RedisConnection;
-
-            // set redis data
-            conRedis->redisServer = redisServer;
-            conRedis->redisPort = redisPort;
-            conRedis->connectionName = connectionName;
-
-            // try to connec to the redis server
-            if(conRedis->socket) conRedis->socket->deleteLater();
-            conRedis->socket = new QTcpSocket;
-            conRedis->socket->connectToHost(redisServer, redisPort);
-            if(!conRedis->socket->waitForConnected(5000)) {
-                conRedis->socket->deleteLater();
-                return false;
-            }
-
-            // on success connection, save the connection
-            RedisMapConnectionManager::mapRedisConnections.insert(connectionName, conRedis);
-            return true;
-        }
-
-        static RedisConnection* getReadyRedisConnection(QString connectionName = "redis")
-        {
-            RedisConnection* rconnection = RedisMapConnectionManager::mapRedisConnections.value(connectionName);
-            return RedisMapConnectionManager::checkRedisConnection(rconnection) ? rconnection : 0;
-        }
-
-        static bool checkRedisConnection(RedisConnection *redisConnection)
-        {
-            return redisConnection && redisConnection->socket->state() == QAbstractSocket::ConnectedState;
-        }
-
-    private:
-        static QMap<QString, RedisMapConnectionManager::RedisConnection*> mapRedisConnections;
-};
+// own
+#include "redismapconnectionmanager.h"
 
 template< class Key, class T >
 class RedisMap
