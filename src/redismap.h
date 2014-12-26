@@ -75,7 +75,7 @@ class RedisMap
             QVariant vkey(key);
             QVariant vValue(value);
 
-            // if something is wrong with key and value, exit
+            // if something is wrong with key or value, exit
             if(!vkey.isValid() || !vValue.isValid()) return false;
 
             // build command
@@ -84,6 +84,7 @@ class RedisMap
                                     this->redisList.append(vkey.toByteArray()),
                                     vValue.toByteArray()
                                 });
+
             // insert into redis
             this->redisConnection->socket->write(cmd);
 
@@ -99,6 +100,12 @@ class RedisMap
 
         QByteArray buildRedisCommand(std::initializer_list<QByteArray> args)
         {
+            // Build binary save redis command as ByteArray in the following form:
+            // *<Number of Arguments>\r\n
+            // For Every argument:
+            // $<number of bytes of argument>\r\n
+            // <argument data>\r\n
+            //
             QByteArray data;
             char length[sizeof(int)*8+1+3];
             sprintf(length, "*%d\r\n", args.size());
