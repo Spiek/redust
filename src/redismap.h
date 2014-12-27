@@ -29,12 +29,15 @@ class RedisMap
             if(!vkey.isValid() || !vValue.isValid()) return false;
 
             // build command
-            QByteArray cmd = this->buildRedisCommand({
-                                    "SET",
-                                    this->redisList.append(vkey.toByteArray()),
-                                    vValue.toByteArray()
-                                });
+            QByteArray baKey = vkey.toByteArray().prepend(this->redisList);
+            QByteArray baValue = vValue.toByteArray();
 
+            QByteArray cmd = this->buildRedisCommand("*3\r\n$3\r\nSET\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
+                                                        baKey.size(),
+                                                        baKey.data(),
+                                                        baValue.size(),
+                                                        baValue.data()
+                                                      );
             // insert into redis
             this->redisConnection->socket->write(cmd);
 
@@ -48,24 +51,20 @@ class RedisMap
             return true;
         }
 
-        QByteArray buildRedisCommand(std::initializer_list<QByteArray> args)
+        QByteArray buildRedisCommand(const char* cmd, ...)
         {
-            // Build binary save redis command as ByteArray in the following form:
-            // *<Number of Arguments>\r\n
-            // For Every argument:
-            // $<number of bytes of argument>\r\n
-            // <argument data>\r\n
-            //
-            QByteArray data;
-            char length[sizeof(int)*8+1+3];
-            sprintf(length, "*%d\r\n", args.size());
-            data += length;
-            for(QByteArray arg : args) {
-                sprintf(length, "$%d\r\n", arg.size());
-                data += length;
-                data += arg + "\r\n";
-            }
-            return data;
+            QByteArray buffer(1024, '\0');
+            va_list ap;
+            va_start(ap, cmd);
+            int len = vsnprintf(buffer.data(), buffer.size(), cmd, ap);
+            if(len >= buffer.size()) {
+                buffer.resize(len + 1);
+
+                va_start(ap, cmd);
+                len = vsnprintf(buffer.data(), buffer.size(), cmd, ap);
+            } else buffer.resize(len);
+
+            return buffer;
         }
 
 
