@@ -17,8 +17,10 @@ TEMPLATE = app
 
 
 SOURCES += src/main.cpp \
-	   src/redismapconnectionmanager.cpp
+	   src/redismapconnectionmanager.cpp \
+	   src/test.cpp
 
 HEADERS += \
 	   src/redismap.h \
-	   src/redismapconnectionmanager.h
+	   src/redismapconnectionmanager.h \
+	   src/test.h
