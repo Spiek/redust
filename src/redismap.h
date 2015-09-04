@@ -7,9 +7,10 @@
 // own
 #include "redismapconnectionmanager.h"
 
-// some static settings
-#define INIT_QUERY_BUFFER_CACHE_SIZE 1
-#define MAX_QUERY_BUFFER_CACHE_SIZE 10485760
+// protocolbuffer feature
+#ifdef REDISMAP_USEPROTOBUF
+    #include <google/protobuf/message.h>
+#endif
 
 template< typename Key, typename Value >
 class RedisMap
@@ -27,11 +28,15 @@ class RedisMap
             if(!RedisMapConnectionManager::checkRedisConnection(this->redisConnection)) return false;
 
             // simplefy key and value
-            QVariant vkey(key);
-            QVariant vValue(value);
+            QVariant vkey = this->constructVariant(key);
+            QVariant vValue = this->constructVariant(value);
 
             // if something is wrong with key or value, exit
-            if(!vkey.isValid() || !vValue.isValid()) return false;
+            if(!vkey.isValid() || !vValue.isValid()) {
+                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(key).name());
+                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(value).name());
+                return false;
+            }
 
             // simplify command params
             QByteArray baKey = vkey.toByteArray();
@@ -64,6 +69,24 @@ class RedisMap
             return true;
         }
 
+    private:
+        // helpers
+        template< typename T >
+        QVariant constructVariant(T value)
+        {
+#ifdef REDISMAP_USEPROTOBUF
+            // protobuf implementation
+            if(std::is_same<google::protobuf::Message, T>::value) {
+                google::protobuf::Message *message = 0;
+                if(std::is_pointer<T>::value) message = (google::protobuf::Message*)value;
+                else message = (google::protobuf::Message*)&value;
+                return message ? QString::fromStdString(message->SerializeAsString()) : "";
+            }
+#endif
+            return value;
+        }
+
+
         static inline bool checkRedisReturnValue(QAbstractSocket* socket)
         {
             return socket && socket->readAll().left(3) == "+OK";
@@ -75,8 +98,8 @@ class RedisMap
             if(!socket) return;
 
             // build command
-            static int sizeBuffer = INIT_QUERY_BUFFER_CACHE_SIZE;
-            static char* buffer = (char*)malloc(INIT_QUERY_BUFFER_CACHE_SIZE);
+            static int sizeBuffer = REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE;
+            static char* buffer = (char*)malloc(REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE);
 
             // only create one command at a time
             static QMutex mutex;
@@ -97,9 +120,9 @@ class RedisMap
             socket->write(buffer, len);
 
             // if we are reaching the max buffer cache, we decrease the size to max allowed
-            if(sizeBuffer > MAX_QUERY_BUFFER_CACHE_SIZE) {
-                sizeBuffer = MAX_QUERY_BUFFER_CACHE_SIZE;
-                buffer = (char*)realloc(buffer, MAX_QUERY_BUFFER_CACHE_SIZE);
+            if(sizeBuffer > REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE) {
+                sizeBuffer = REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE;
+                buffer = (char*)realloc(buffer, REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE);
             }
         }
 

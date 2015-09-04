@@ -24,3 +24,10 @@ HEADERS += \
 	   src/redismap.h \
 	   src/redismapconnectionmanager.h \
 	   src/test.h
+
+# Settings
+DEFINES += "REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE=1048576"
+DEFINES += "REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE=10485760"
+
+# Features
+DEFINES += "REDISMAP_USEPROTOBUF"
