@@ -1,6 +1,9 @@
 #ifndef REDISMAP_H
 #define REDISMAP_H
 
+// std lib
+#include <typeinfo>
+
 #include <QVariant>
 #include <QMutex>
 
@@ -8,7 +11,7 @@
 #include "redismapconnectionmanager.h"
 
 // protocolbuffer feature
-#ifdef REDISMAP_USEPROTOBUF
+#ifdef REDISMAP_SUPPORT_PROTOBUF
     #include <google/protobuf/message.h>
 #endif
 
@@ -34,7 +37,7 @@ class RedisMap
             // if something is wrong with key or value, exit
             if(!vkey.isValid() || !vValue.isValid()) {
                 if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(key).name());
-                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(value).name());
+                if(!vkey.isValid()) qDebug("Cannot handle Valuetype %s", typeid(value).name());
                 return false;
             }
 
@@ -70,19 +73,22 @@ class RedisMap
         }
 
     private:
-        // helpers
+        // variant type handlers
+#ifdef REDISMAP_SUPPORT_PROTOBUF
+        // protobuf data serial implementation
+        template< typename T,
+                  typename std::enable_if<std::is_same<google::protobuf::Message, T>::value || std::is_same<google::protobuf::Message*, T>::value>::type* = nullptr>
+        QVariant constructVariant(T value)
+        {
+            google::protobuf::Message *message = 0;
+            if(std::is_pointer<T>::value) message = (google::protobuf::Message*)value;
+            else message = (google::protobuf::Message*)&value;
+            return message ? QString::fromStdString(message->SerializeAsString()) : "";
+        }
+#endif
         template< typename T >
         QVariant constructVariant(T value)
         {
-#ifdef REDISMAP_USEPROTOBUF
-            // protobuf implementation
-            if(std::is_same<google::protobuf::Message, T>::value) {
-                google::protobuf::Message *message = 0;
-                if(std::is_pointer<T>::value) message = (google::protobuf::Message*)value;
-                else message = (google::protobuf::Message*)&value;
-                return message ? QString::fromStdString(message->SerializeAsString()) : "";
-            }
-#endif
             return value;
         }
 
@@ -97,7 +103,7 @@ class RedisMap
             // check socket
             if(!socket) return;
 
-            // build command
+            // init some static buffer vars
             static int sizeBuffer = REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE;
             static char* buffer = (char*)malloc(REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE);
 
