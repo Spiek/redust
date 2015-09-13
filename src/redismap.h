@@ -58,42 +58,30 @@ class RedisValue<T&, typename std::enable_if<std::is_base_of<google::protobuf::M
 };
 
 
-template< typename Key, typename Value >
-class RedisMap
+class RedisMapPrivate
 {
     public:
-        RedisMap(QString list, QString connectionName = "redis")
+        RedisMapPrivate(QString list, QString connectionName = "redis")
         {
             this->redisList = list.toLocal8Bit() + ".";
             this->redisConnection = RedisMapConnectionManager::getReadyRedisConnection(connectionName);
         }
 
-        bool insert(Key key, Value value, bool waitForAnswer = false)
+        bool insert(QVariant key, QVariant value, bool waitForAnswer = false)
         {
             // if connection is not okay, exit
             if(!RedisMapConnectionManager::checkRedisConnection(this->redisConnection)) return false;
 
-            // simplefy key and value
-            QVariant vkey = RedisValue<Key>::serialize(key);
-            QVariant vValue = RedisValue<Value>::serialize(value);
-
-            // if something is wrong with key or value, exit
-            if(!vkey.isValid() || !vValue.isValid()) {
-                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(key).name());
-                if(!vkey.isValid()) qDebug("Cannot handle Valuetype %s", typeid(value).name());
-                return false;
-            }
-
             // simplify command params
-            QByteArray baKey = vkey.toByteArray();
-            QByteArray baValue = vValue.toByteArray();
+            QByteArray baKey = key.toByteArray();
+            QByteArray baValue = value.toByteArray();
 
             // Build and execute Command
             // SET key value
             // src: http://redis.io/commands/SET
             QByteArray* baList = &this->redisList;
             static const char* redisCmd = "*3\r\n$3\r\nSET\r\n$%d\r\n%s%s\r\n$%d\r\n%s\r\n";
-            RedisMap::execRedisCommand(this->redisConnection->socket,
+            RedisMapPrivate::execRedisCommand(this->redisConnection->socket,
                                         // command
                                         redisCmd,
 
@@ -108,7 +96,7 @@ class RedisMap
             if(waitForAnswer) {
                 this->redisConnection->socket->waitForBytesWritten();
                 this->redisConnection->socket->waitForReadyRead();
-                return RedisMap::checkRedisReturnValue(this->redisConnection->socket);
+                return RedisMapPrivate::checkRedisReturnValue(this->redisConnection->socket);
             }
 
             // otherwise everything is okay
@@ -159,5 +147,40 @@ class RedisMap
         RedisMapConnectionManager::RedisConnection *redisConnection;
         QByteArray redisList;
 };
+
+
+template< typename Key, typename Value >
+class RedisMap
+{
+    public:
+        RedisMap(QString list, QString connectionName = "redis")
+        {
+            this->d = new RedisMapPrivate(list, connectionName);
+        }
+        ~RedisMap()
+        {
+            delete this->d;
+        }
+
+        bool insert(Key key, Value value, bool waitForAnswer = false)
+        {
+            // simplefy key and value
+            QVariant vkey = RedisValue<Key>::serialize(key);
+            QVariant vValue = RedisValue<Value>::serialize(value);
+
+            // if something is wrong with key or value, exit
+            if(!vkey.isValid() || !vValue.isValid()) {
+                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(key).name());
+                if(!vkey.isValid()) qDebug("Cannot handle Valuetype %s", typeid(value).name());
+                return false;
+            }
+
+            return this->d->insert(vkey, vValue, waitForAnswer);
+        }
+
+    private:
+        RedisMapPrivate* d;
+};
+
 
 #endif // REDISMAP_H
