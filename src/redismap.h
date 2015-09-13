@@ -29,18 +29,31 @@ class RedisValue
                   "Pointer types are not allowed in Redismap, because redismap is not storing any data!");
 
     public:
-        static inline QVariant serialize(T value) {  return QVariant(value); }
-        static inline T unserialize(QByteArray value) {  return QVariant(value).value<T>(); }
+        static inline QByteArray serialize(T value, bool* isValid = 0) {
+            QVariant variant(value);
+            if(isValid) *isValid = variant.canConvert<QByteArray>();
+            return variant.value<QByteArray>();
+        }
+        static inline T unserialize(QByteArray value, bool* isValid = 0) {
+            QVariant variant(value);
+            if(isValid) *isValid = variant.canConvert<T>();
+            return variant.value<T>();
+        }
 };
 
 template<typename T>
 class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value && !std::is_pointer<T>::value>::type >
 {
     public:
-        static inline QString serialize(T value) { return QString::fromStdString(value.SerializeAsString()); }
-        static inline T unserialize(QByteArray value) {
+        static inline QString serialize(T value, bool* isValid = 0) {
+            // protocol buffer values are always serializeable
+            if(isValid) *isValid = true;
+            return QString::fromStdString(value.SerializeAsString());
+        }
+        static inline T unserialize(QByteArray value, bool* isValid = 0) {
             T t;
-            t.ParseFromArray(value.data(), value.length());
+            bool valid = t.ParseFromArray(value.data(), value.length());
+            if(isValid) *isValid = valid;
             return t;
         }
 };
@@ -49,10 +62,15 @@ template<typename T>
 class RedisValue<T&, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value>::type >
 {
     public:
-        static inline QString serialize(T value) { return QString::fromStdString(value.SerializeAsString()); }
-        static inline T unserialize(QByteArray value) {
+        static inline QString serialize(T value, bool* isValid = 0) {
+            // protocol buffer values are always serializeable
+            if(isValid) *isValid = true;
+            return QString::fromStdString(value.SerializeAsString());
+        }
+        static inline T unserialize(QByteArray value, bool* isValid = 0) {
             T t;
-            t.ParseFromArray(value.data(), value.length());
+            bool valid = t.ParseFromArray(value.data(), value.length());
+            if(isValid) *isValid = valid;
             return t;
         }
 };
@@ -165,15 +183,14 @@ class RedisMap
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
             // simplefy key and value
-            QVariant vkey = RedisValue<Key>::serialize(key);
-            QVariant vValue = RedisValue<Value>::serialize(value);
+            bool keyValid;
+            bool valueValid;
+            QVariant vkey = RedisValue<Key>::serialize(key, &keyValid);
+            QVariant vValue = RedisValue<Value>::serialize(value, &valueValid);
 
-            // if something is wrong with key or value, exit
-            if(!vkey.isValid() || !vValue.isValid()) {
-                if(!vkey.isValid()) qDebug("Cannot handle Keytype %s", typeid(key).name());
-                if(!vkey.isValid()) qDebug("Cannot handle Valuetype %s", typeid(value).name());
-                return false;
-            }
+             // if something is wrong with key or value, exit
+            if(!keyValid)   qDebug("Cannot handle Keytype %s", typeid(key).name());
+            if(!valueValid) qDebug("Cannot handle Valuetype %s", typeid(value).name());
 
             return this->d->insert(vkey, vValue, waitForAnswer);
         }
