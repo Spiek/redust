@@ -24,55 +24,55 @@ class RedisValue
     //         * the data would not be touched by the Redismap and so maybe become out of date.
     //         * redismap is not able to handle the ownership of the pointers, qDeleteAll on the values would not working, because no data do exist localy!
     // Perfomance Tip:
-    // * instead of using pointers you can define the Redismap with reference Types
+    // * instead of using pointers you can define the Redismap key and/or values as reference Types
     static_assert(!std::is_pointer<T>::value,
                   "Pointer types are not allowed in Redismap, because redismap is not storing any data!");
 
     public:
-        static inline QByteArray serialize(T value, bool* isValid = 0) {
-            QVariant variant(value);
-            if(isValid) *isValid = variant.canConvert<QByteArray>();
-            return variant.value<QByteArray>();
+        static inline QByteArray serialize(T value) { return QVariant(value).value<QByteArray>(); }
+        static inline T deserialize(QByteArray value) { return QVariant(value).value<typename std::remove_reference<T>::type>(); }
+        static inline bool isSerializeable() {
+            // init a dummy for type checking
+            typename std::remove_reference<T>::type t = {};
+            return QVariant(t).canConvert<QByteArray>();
         }
-        static inline T unserialize(QByteArray value, bool* isValid = 0) {
-            QVariant variant(value);
-            if(isValid) *isValid = variant.canConvert<T>();
-            return variant.value<T>();
-        }
+        static inline bool isDeserializeable() { return QVariant(QByteArray()).canConvert<typename std::remove_reference<T>::type>(); }
 };
 
 template<typename T>
 class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value && !std::is_pointer<T>::value>::type >
 {
     public:
-        static inline QString serialize(T value, bool* isValid = 0) {
-            // protocol buffer values are always serializeable
-            if(isValid) *isValid = true;
-            return QString::fromStdString(value.SerializeAsString());
-        }
-        static inline T unserialize(QByteArray value, bool* isValid = 0) {
+        static inline QByteArray serialize(T value) { return QByteArray::fromStdString(value.SerializeAsString()); }
+        static inline T deserialize(QByteArray value) {
             T t;
-            bool valid = t.ParseFromArray(value.data(), value.length());
-            if(isValid) *isValid = valid;
+            t.ParseFromArray(value.data(), value.length());
             return t;
         }
+
+        // protocol buffer values are always serializeable
+        static inline bool isSerializeable() { return true; }
+
+        // protocol buffer values should always be unserializeable (depends on input data!)
+        static inline bool isDeserializeable() { return true; }
 };
 
 template<typename T>
 class RedisValue<T&, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value>::type >
 {
     public:
-        static inline QString serialize(T value, bool* isValid = 0) {
-            // protocol buffer values are always serializeable
-            if(isValid) *isValid = true;
-            return QString::fromStdString(value.SerializeAsString());
-        }
-        static inline T unserialize(QByteArray value, bool* isValid = 0) {
+        static inline QByteArray serialize(T value) { return QByteArray::fromStdString(value.SerializeAsString()); }
+        static inline T deserialize(QByteArray value) {
             T t;
-            bool valid = t.ParseFromArray(value.data(), value.length());
-            if(isValid) *isValid = valid;
+            t.ParseFromArray(value.data(), value.length());
             return t;
         }
+
+        // protocol buffer values are always serializeable
+        static inline bool isSerializeable() { return true; }
+
+        // protocol buffer values should always be unserializeable (depends on input data!)
+        static inline bool isDeserializeable() { return true; }
 };
 
 
@@ -85,14 +85,10 @@ class RedisMapPrivate
             this->redisConnection = RedisMapConnectionManager::getReadyRedisConnection(connectionName);
         }
 
-        bool insert(QVariant key, QVariant value, bool waitForAnswer = false)
+        bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false)
         {
             // if connection is not okay, exit
             if(!RedisMapConnectionManager::checkRedisConnection(this->redisConnection)) return false;
-
-            // simplify command params
-            QByteArray baKey = key.toByteArray();
-            QByteArray baValue = value.toByteArray();
 
             // Build and execute Command
             // SET key value
@@ -104,11 +100,11 @@ class RedisMapPrivate
                                         redisCmd,
 
                                         // command params
-                                        baKey.size() + baList->size(),
+                                        key.size() + baList->size(),
                                         baList->data(),
-                                        baKey.data(),
-                                        baValue.size(),
-                                        baValue.data());
+                                        key.data(),
+                                        value.size(),
+                                        value.data());
 
             // if user want to wait until redis server answers, so do it
             if(waitForAnswer) {
@@ -174,7 +170,14 @@ class RedisMap
         RedisMap(QString list, QString connectionName = "redis")
         {
             this->d = new RedisMapPrivate(list, connectionName);
+
+            // (de)serializeable check
+            if(RedisValue<Key>::isSerializeable())     qDebug("Cannot Serialize     Keytype %s", typeid(Key).name());
+            if(RedisValue<Key>::isDeserializeable())   qDebug("Cannot Deserialize   Keytype %s", typeid(Key).name());
+            if(RedisValue<Value>::isSerializeable())   qDebug("Cannot Serialize   Valuetype %s", typeid(Value).name());
+            if(RedisValue<Value>::isDeserializeable()) qDebug("Cannot Deserialize Valuetype %s", typeid(Value).name());
         }
+
         ~RedisMap()
         {
             delete this->d;
@@ -182,17 +185,8 @@ class RedisMap
 
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
-            // simplefy key and value
-            bool keyValid;
-            bool valueValid;
-            QVariant vkey = RedisValue<Key>::serialize(key, &keyValid);
-            QVariant vValue = RedisValue<Value>::serialize(value, &valueValid);
-
-             // if something is wrong with key or value, exit
-            if(!keyValid)   qDebug("Cannot handle Keytype %s", typeid(key).name());
-            if(!valueValid) qDebug("Cannot handle Valuetype %s", typeid(value).name());
-
-            return this->d->insert(vkey, vValue, waitForAnswer);
+            return this->d->insert(RedisValue<Key>::serialize(key),
+                                   RedisValue<Value>::serialize(value), waitForAnswer);
         }
 
     private:
