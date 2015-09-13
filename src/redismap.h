@@ -172,10 +172,10 @@ class RedisMap
             this->d = new RedisMapPrivate(list, connectionName);
 
             // (de)serializeable check
-            if(RedisValue<Key>::isSerializeable())     qDebug("Cannot Serialize     Keytype %s", typeid(Key).name());
-            if(RedisValue<Key>::isDeserializeable())   qDebug("Cannot Deserialize   Keytype %s", typeid(Key).name());
-            if(RedisValue<Value>::isSerializeable())   qDebug("Cannot Serialize   Valuetype %s", typeid(Value).name());
-            if(RedisValue<Value>::isDeserializeable()) qDebug("Cannot Deserialize Valuetype %s", typeid(Value).name());
+            if(!RedisValue<Key>::isSerializeable())     qDebug("Cannot Serialize     Keytype %s", typeid(Key).name());
+            if(!RedisValue<Key>::isDeserializeable())   qDebug("Cannot Deserialize   Keytype %s", typeid(Key).name());
+            if(!RedisValue<Value>::isSerializeable())   qDebug("Cannot Serialize   Valuetype %s", typeid(Value).name());
+            if(!RedisValue<Value>::isDeserializeable()) qDebug("Cannot Deserialize Valuetype %s", typeid(Value).name());
         }
 
         ~RedisMap()
