@@ -18,12 +18,15 @@ TEMPLATE = app
 
 SOURCES += src/main.cpp \
 	   src/redismapconnectionmanager.cpp \
-	   src/test.cpp
+	   src/test.cpp \
+       src/redismapprivate.cpp
 
 HEADERS += \
 	   src/redismap.h \
 	   src/redismapconnectionmanager.h \
-	   src/test.h
+	   src/test.h \
+       src/redisvalue.h \
+       src/redismapprivate.h
 
 # Settings
 DEFINES += "REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE=1048576"
