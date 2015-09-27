@@ -1,0 +1,13 @@
+package Protobuffer;
+message Test
+{
+	required string stringTest = 1;
+	required int64 int64Test = 2;
+	required SubTest testMessage = 3;
+}
+
+message SubTest
+{
+	required string stringTest = 1;
+	required int64 int64Test = 2;
+}

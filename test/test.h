@@ -7,6 +7,7 @@
 #include <QElapsedTimer>
 
 #include "redismap.h"
+#include "test.pb.h"
 
 class Test : public QObject
 {

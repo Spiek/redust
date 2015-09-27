@@ -16,24 +16,27 @@ CONFIG   += c++11
 TEMPLATE = app
 
 
-SOURCES += src/main.cpp \
-	   src/redismapconnectionmanager.cpp \
-	   src/test.cpp \
-       src/redismapprivate.cpp
+SOURCES += src/redismapconnectionmanager.cpp \
+           src/redismapprivate.cpp
 
-HEADERS += \
-	   src/redismap.h \
-	   src/redismapconnectionmanager.h \
-	   src/test.h \
-       src/redisvalue.h \
-       src/redismapprivate.h
+HEADERS += src/redismap.h \
+           src/redismapconnectionmanager.h \
+           src/redisvalue.h \
+           src/redismapprivate.h
+INCLUDEPATH += src
+
+# Tests
+SOURCES += test/main.cpp
+SOURCES += test/test.cpp
+HEADERS += test/test.h
+INCLUDEPATH += test
 
 # Google protobuffer Test messages
-HEADERS += src/test.pb.h
-SOURCES += src/test.pb.cc
+HEADERS += test/test.pb.h
+SOURCES += test/test.pb.cc
 
 # Features
 DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
 
-# link against protobuf lib (we can't do that in mkspecs because the protobuf lib has to be set as last lib)
+# link against protobuf lib
 LIBS += -lprotobuf
