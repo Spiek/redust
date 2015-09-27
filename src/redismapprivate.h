@@ -17,7 +17,7 @@ class RedisMapPrivate
 
     private:
         static inline bool checkRedisReturnValue(QAbstractSocket* socket);
-        static void execRedisCommand(QAbstractSocket* socket, const char* cmd, ...);
+        static void execRedisCommand(QAbstractSocket* socket, std::initializer_list<QByteArray> cmd);
 
     private:
         RedisMapConnectionManager::RedisConnection *redisConnection;

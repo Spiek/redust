@@ -14,18 +14,8 @@ bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswe
     // Build and execute Command
     // SET key value
     // src: http://redis.io/commands/SET
-    QByteArray* baList = &this->redisList;
-    static const char* redisCmd = "*3\r\n$3\r\nSET\r\n$%d\r\n%s%s\r\n$%d\r\n%s\r\n";
     RedisMapPrivate::execRedisCommand(this->redisConnection->socket,
-                                // command
-                                redisCmd,
-
-                                // command params
-                                key.size() + baList->size(),
-                                baList->data(),
-                                key.data(),
-                                value.size(),
-                                value.data());
+                                      { "SET", key.prepend(this->redisList), value });
 
     // if user want to wait until redis server answers, so do it
     if(waitForAnswer) {
@@ -43,36 +33,29 @@ bool RedisMapPrivate::checkRedisReturnValue(QAbstractSocket *socket)
     return socket && socket->readAll().left(3) == "+OK";
 }
 
-void RedisMapPrivate::execRedisCommand(QAbstractSocket *socket, const char *cmd, ...)
+void RedisMapPrivate::execRedisCommand(QAbstractSocket *socket, std::initializer_list<QByteArray> cmd)
 {
     // check socket
     if(!socket) return;
 
-    // init some static buffer vars
-    static int sizeBuffer = REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE;
-    static char* buffer = (char*)malloc(REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE);
+    /// Build RESP Array
+    /// Note: Max 9.999.999.999 parameters/elements allowed -> ceil(log10(pow(256, sizeof(int)))
+    /// see: http://redis.io/topics/protocol#resp-arrays
+    // 1. build RESP number of elements size
+    QByteArray content("*");
+    char contentLength[11];
+    content.append(itoa(cmd.size(), contentLength, 10));
+    content.append("\r\n");
 
-    // only create one command at a time
-    static QMutex mutex;
-    QMutexLocker mlocker(&mutex);
-
-    // create command in buffer (and resize buffer if needed!)
-    va_list ap;
-    va_start(ap, cmd);
-    int len = vsnprintf(buffer, sizeBuffer, cmd, ap);
-    if(len > sizeBuffer) {
-        sizeBuffer = len;
-        buffer = (char*)realloc(buffer, sizeBuffer);
-        va_start(ap, cmd);
-        len = vsnprintf(buffer, sizeBuffer, cmd, ap);
+    // 2. build RESP elements
+    for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
+        content.append("$");
+        content.append(itr->isNull() ? "-1" : itoa(itr->length(), contentLength, 10));
+        content.append("\r\n");
+        content.append(*itr);
+        content.append("\r\n");
     }
 
-    // write buffer to
-    socket->write(buffer, len);
-
-    // if we are reaching the max buffer cache, we decrease the size to max allowed
-    if(sizeBuffer > REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE) {
-        sizeBuffer = REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE;
-        buffer = (char*)realloc(buffer, REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE);
-    }
+    // write content to socket
+    socket->write(content);
 }

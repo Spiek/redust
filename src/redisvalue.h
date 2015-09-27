@@ -42,7 +42,12 @@ template<typename T>
 class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value && !std::is_pointer<T>::value>::type >
 {
     public:
-        static inline QByteArray serialize(T value) { return QByteArray::fromStdString(value.SerializeAsString()); }
+        static inline QByteArray serialize(T value) {
+            QByteArray data;
+            data.resize(value.ByteSize());
+            value.SerializeToArray(data.data(), value.ByteSize());
+            return data;
+        }
         static inline T deserialize(QByteArray value) {
             T t;
             t.ParseFromArray(value.data(), value.length());
@@ -60,7 +65,12 @@ template<typename T>
 class RedisValue<T&, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value>::type >
 {
     public:
-        static inline QByteArray serialize(T value) { return QByteArray::fromStdString(value.SerializeAsString()); }
+        static inline QByteArray serialize(T value) {
+            QByteArray data;
+            data.resize(value.ByteSize());
+            value.SerializeToArray(data.data(), value.ByteSize());
+            return data;
+        }
         static inline T deserialize(QByteArray value) {
             T t;
             t.ParseFromArray(value.data(), value.length());

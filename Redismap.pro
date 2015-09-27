@@ -28,10 +28,6 @@ HEADERS += \
        src/redisvalue.h \
        src/redismapprivate.h
 
-# Settings
-DEFINES += "REDISMAP_INIT_QUERY_BUFFER_CACHE_SIZE=1048576"
-DEFINES += "REDISMAP_MAX_QUERY_BUFFER_CACHE_SIZE=10485760"
-
 # Google protobuffer Test messages
 HEADERS += src/test.pb.h
 SOURCES += src/test.pb.cc
