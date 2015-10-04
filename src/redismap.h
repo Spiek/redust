@@ -31,6 +31,11 @@ class RedisMap
                                    RedisValue<Value>::serialize(value), waitForAnswer);
         }
 
+        Value value(Key key)
+        {
+            return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
+        }
+
     private:
         RedisMapPrivate* d;
 };

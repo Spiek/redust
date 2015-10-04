@@ -110,7 +110,7 @@ class Test : public ::google::protobuf::Message {
   inline ::google::protobuf::int64 int64test() const;
   inline void set_int64test(::google::protobuf::int64 value);
 
-  // required .Protobuffer.SubTest testMessage = 3;
+  // optional .Protobuffer.SubTest testMessage = 3;
   inline bool has_testmessage() const;
   inline void clear_testmessage();
   static const int kTestMessageFieldNumber = 3;
@@ -343,7 +343,7 @@ inline void Test::set_int64test(::google::protobuf::int64 value) {
   // @@protoc_insertion_point(field_set:Protobuffer.Test.int64Test)
 }
 
-// required .Protobuffer.SubTest testMessage = 3;
+// optional .Protobuffer.SubTest testMessage = 3;
 inline bool Test::has_testmessage() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }

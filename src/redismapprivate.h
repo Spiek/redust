@@ -14,13 +14,13 @@ class RedisMapPrivate
     public:
         RedisMapPrivate(QString list, QString connectionName = "redis");
         bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);
+        QByteArray value(QByteArray key);
 
     private:
-        static inline bool checkRedisReturnValue(QAbstractSocket* socket);
-        static void execRedisCommand(QAbstractSocket* socket, std::initializer_list<QByteArray> cmd);
+        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0);
 
     private:
-        RedisMapConnectionManager::RedisConnection *redisConnection;
+        QString connectionName;
         QByteArray redisList;
 };
 

@@ -3,40 +3,39 @@
 RedisMapPrivate::RedisMapPrivate(QString list, QString connectionName)
 {
     this->redisList = list.toLocal8Bit() + ".";
-    this->redisConnection = RedisMapConnectionManager::getReadyRedisConnection(connectionName);
+    this->connectionName = connectionName;
 }
 
 bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
 {
-    // if connection is not okay, exit
-    if(!RedisMapConnectionManager::checkRedisConnection(this->redisConnection)) return false;
-
     // Build and execute Command
     // SET key value
     // src: http://redis.io/commands/SET
-    RedisMapPrivate::execRedisCommand(this->redisConnection->socket,
-                                      { "SET", key.prepend(this->redisList), value });
+    QByteArray returnValue;
+    bool result = RedisMapPrivate::execRedisCommand({ "SET", key.prepend(this->redisList), value }, waitForAnswer ? &returnValue : 0);
 
-    // if user want to wait until redis server answers, so do it
-    if(waitForAnswer) {
-        this->redisConnection->socket->waitForBytesWritten();
-        this->redisConnection->socket->waitForReadyRead();
-        return RedisMapPrivate::checkRedisReturnValue(this->redisConnection->socket);
-    }
-
-    // otherwise everything is okay
-    return true;
+    // determinate result
+    if(!waitForAnswer) return result;
+    else return result && returnValue == "OK";
 }
 
-bool RedisMapPrivate::checkRedisReturnValue(QAbstractSocket *socket)
+QByteArray RedisMapPrivate::value(QByteArray key)
 {
-    return socket && socket->readAll().left(3) == "+OK";
+    // Build and execute Command
+    // GET key
+    // src: http://redis.io/commands/GET
+    QByteArray returnValue;
+    RedisMapPrivate::execRedisCommand({ "GET", key.prepend(this->redisList) }, &returnValue);
+
+    // return result
+    return returnValue;
 }
 
-void RedisMapPrivate::execRedisCommand(QAbstractSocket *socket, std::initializer_list<QByteArray> cmd)
+bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result)
 {
-    // check socket
-    if(!socket) return;
+    // acquire socket
+    RedisConnectionReleaser con = RedisConnectionManager::requestConnection(this->connectionName, !result);
+    if(!con.data() || !con->socket) return false;
 
     /// Build RESP Array
     /// Note: Max 9.999.999.999 parameters/elements allowed -> ceil(log10(pow(256, sizeof(int)))
@@ -57,5 +56,49 @@ void RedisMapPrivate::execRedisCommand(QAbstractSocket *socket, std::initializer
     }
 
     // write content to socket
-    socket->write(content);
+    con->socket->write(content);
+
+    // exit if we don't have to parse the return code
+    if(!result) return true;
+
+    // wait for server return code
+    con->socket->waitForReadyRead();
+    QByteArray data = con->socket->readAll();
+
+    /// Parse Result RESP Data
+    /// see: http://redis.io/topics/protocol#resp-protocol-description
+
+    char respDataType = data.at(0);
+    data.remove(0, 1);
+
+    // handle Simple Strings
+    if(respDataType == '+') {
+        *result = data.remove(data.length() - 2, 2);
+        return true;
+    }
+
+    // handle Errors
+    if(respDataType == '-') {
+        *result = data.remove(data.length() - 2, 2);
+        return false;
+    }
+
+    // handle Integers
+    if(respDataType == ':') {
+        *result = data.remove(data.length() - 2, 2);
+        return true;
+    }
+
+    // handle Bulk Strings
+    if(respDataType == '$') {
+        char contentLength[11];
+        char* nextChar = (char*)memccpy(contentLength, data.data(), '\r', 9);
+        if(!nextChar) return false;
+        *--nextChar = '\0';
+        *result = data.mid(strlen(contentLength) + 2, atoi(contentLength));
+        return true;
+    }
+
+    // otherwise we have an parse error
+    return false;
 }

@@ -7,7 +7,7 @@ Test::Test(QObject *parent) : QObject(parent)
 
 void Test::start()
 {
-    RedisMapConnectionManager::initRedisConnection("127.0.0.1", 6379);
+    RedisConnectionManager::addConnections("redis", "127.0.0.1", 6379, 10);
     RedisMap<qint64, Protobuffer::Test> rmap("BLUB");
     qint64 times = 1000000;
     QElapsedTimer timer;

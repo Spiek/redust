@@ -105,7 +105,7 @@ void protobuf_AddDesc_test_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\ntest.proto\022\013Protobuffer\"X\n\004Test\022\022\n\nstr"
     "ingTest\030\001 \002(\t\022\021\n\tint64Test\030\002 \002(\003\022)\n\013test"
-    "Message\030\003 \002(\0132\024.Protobuffer.SubTest\"0\n\007S"
+    "Message\030\003 \001(\0132\024.Protobuffer.SubTest\"0\n\007S"
     "ubTest\022\022\n\nstringTest\030\001 \002(\t\022\021\n\tint64Test\030"
     "\002 \002(\003", 165);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
@@ -250,7 +250,7 @@ bool Test::MergePartialFromCodedStream(
         break;
       }
 
-      // required .Protobuffer.SubTest testMessage = 3;
+      // optional .Protobuffer.SubTest testMessage = 3;
       case 3: {
         if (tag == 26) {
          parse_testMessage:
@@ -303,7 +303,7 @@ void Test::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt64(2, this->int64test(), output);
   }
 
-  // required .Protobuffer.SubTest testMessage = 3;
+  // optional .Protobuffer.SubTest testMessage = 3;
   if (has_testmessage()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       3, this->testmessage(), output);
@@ -335,7 +335,7 @@ void Test::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(2, this->int64test(), target);
   }
 
-  // required .Protobuffer.SubTest testMessage = 3;
+  // optional .Protobuffer.SubTest testMessage = 3;
   if (has_testmessage()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -368,7 +368,7 @@ int Test::ByteSize() const {
           this->int64test());
     }
 
-    // required .Protobuffer.SubTest testMessage = 3;
+    // optional .Protobuffer.SubTest testMessage = 3;
     if (has_testmessage()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -428,7 +428,7 @@ void Test::CopyFrom(const Test& from) {
 }
 
 bool Test::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   if (has_testmessage()) {
     if (!this->testmessage().IsInitialized()) return false;
