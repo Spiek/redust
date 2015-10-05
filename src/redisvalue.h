@@ -7,6 +7,7 @@
 // qtcore
 #include <QVariant>
 #include <QByteArray>
+#include <QtEndian>
 
 // protocolbuffer feature
 #ifdef REDISMAP_SUPPORT_PROTOBUF
@@ -35,6 +36,24 @@ class RedisValue
             return QVariant(t).canConvert<QByteArray>();
         }
         static inline bool isDeserializeable() { return QVariant(QByteArray()).canConvert<typename std::remove_reference<T>::type>(); }
+};
+
+template<typename T>
+class RedisValue<T, typename std::enable_if<std::is_arithmetic<T>::value && !std::is_pointer<T>::value && !std::is_reference<T>::value>::type >
+{
+    public:
+        static inline QByteArray serialize(T value) {
+            typename std::remove_reference<T>::type t = qToBigEndian<T>(value);
+            return QByteArray((char*)(void*)&t, sizeof(typename std::remove_reference<T>::type));
+        }
+        static inline T deserialize(QByteArray value) {
+            typename std::remove_reference<T>::type t;
+            memcpy(&t, value.data(), sizeof(typename std::remove_reference<T>::type));
+            t = qFromBigEndian<T>(t);
+            return t;
+        }
+        static inline bool isSerializeable() { return true; }
+        static inline bool isDeserializeable() { return true; }
 };
 
 #ifdef REDISMAP_SUPPORT_PROTOBUF
