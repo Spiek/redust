@@ -37,26 +37,28 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     RedisConnectionReleaser con = RedisConnectionManager::requestConnection(this->connectionName, !result);
     if(!con.data() || !con->socket) return false;
 
-    /// Build RESP Array
-    /// Note: Max 9.999.999.999 parameters/elements allowed -> ceil(log10(pow(256, sizeof(int)))
+    /// Build RESP Data Packet
     /// see: http://redis.io/topics/protocol#resp-arrays
-    // 1. build RESP number of elements size
-    QByteArray content("*");
-    char contentLength[11];
-    content.append(itoa(cmd.size(), contentLength, 10));
-    content.append("\r\n");
+    // 1. determine allocation size
 
-    // 2. build RESP elements
+    int size = 15;
+    for(auto itr = cmd.begin(); itr != cmd.end(); itr++) size += 15 + itr->length();
+
+    // 2. build RESP Data Packet
+    char* content = (char*)malloc(size);
+    char* stringData = content;
+    content += sprintf(content, "*%i\r\n", cmd.size());
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
-        content.append("$");
-        content.append(itr->isNull() ? "-1" : itoa(itr->length(), contentLength, 10));
-        content.append("\r\n");
-        content.append(*itr);
-        content.append("\r\n");
+        content += sprintf(content, "$%i\r\n", itr->isEmpty() ? -1 : itr->length());
+        content = (char*)mempcpy(content, itr->data(), itr->length());
+        *content = '\r';
+        *++content = '\n';
+        content++;
     }
 
     // write content to socket
-    con->socket->write(content);
+    con->socket->write(stringData, content - stringData);
+    free(stringData);
 
     // exit if we don't have to parse the return code
     if(!result) return true;
