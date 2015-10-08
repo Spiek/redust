@@ -25,6 +25,11 @@ class RedisMap
             delete this->d;
         }
 
+        void clear(bool async = true)
+        {
+            this->d->clear(async);
+        }
+
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
             return this->d->insert(RedisValue<Key>::serialize(key),

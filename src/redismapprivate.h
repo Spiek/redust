@@ -13,6 +13,7 @@ class RedisMapPrivate
 {
     public:
         RedisMapPrivate(QString list, QString connectionName = "redis");
+        void clear(bool async = true);
         bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);
         QByteArray value(QByteArray key);
 

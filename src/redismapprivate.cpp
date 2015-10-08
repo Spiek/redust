@@ -6,6 +6,15 @@ RedisMapPrivate::RedisMapPrivate(QString list, QString connectionName)
     this->connectionName = connectionName;
 }
 
+void RedisMapPrivate::clear(bool async)
+{
+    // Build and execute Command
+    // There is currently no implementation of a DEL MYLIST.* so we executing a script on the server doing the job
+    // src: http://redis.io/commands/del#comment-1006084933
+    QByteArray res;
+    RedisMapPrivate::execRedisCommand({"eval", "for _,k in ipairs(redis.call('keys','" + this->redisList + "*')) do redis.call('del',k) end", "0" }, async ? 0 : &res);
+}
+
 bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
 {
     // Build and execute Command
