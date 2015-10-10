@@ -18,7 +18,7 @@ class RedisMapPrivate
         QByteArray value(QByteArray key);
 
     private:
-        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0);
+        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray *> *lstResultArray1 = 0, QList<QByteArray *> *lstResultArray2 = 0);
 
     private:
         QString connectionName;

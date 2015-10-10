@@ -40,20 +40,20 @@ QByteArray RedisMapPrivate::value(QByteArray key)
     return returnValue;
 }
 
-bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result)
+bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray*>* lstResultArray1, QList<QByteArray*>* lstResultArray2)
 {
     // acquire socket
-    RedisConnectionReleaser con = RedisConnectionManager::requestConnection(this->connectionName, !result);
+    bool waitForAnswer = result || lstResultArray1 || lstResultArray2;
+    RedisConnectionReleaser con = RedisConnectionManager::requestConnection(this->connectionName, !waitForAnswer);
     if(!con.data() || !con->socket) return false;
 
-    /// Build RESP Data Packet
+    /// Build and execute RESP request
     /// see: http://redis.io/topics/protocol#resp-arrays
     // 1. determine allocation size
-
     int size = 15;
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) size += 15 + itr->length();
 
-    // 2. build RESP Data Packet
+    // 2. build RESP request
     char* content = (char*)malloc(size);
     char* stringData = content;
     content += sprintf(content, "*%i\r\n", cmd.size());
@@ -65,48 +65,101 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
         content++;
     }
 
-    // write content to socket
+    // 3. exec RESP request
     con->socket->write(stringData, content - stringData);
     free(stringData);
 
     // exit if we don't have to parse the return code
-    if(!result) return true;
+    if(!waitForAnswer) return true;
 
-    // wait for server return code
+    // 4. wait for server return code
     con->socket->waitForReadyRead();
     QByteArray data = con->socket->readAll();
 
-    /// Parse Result RESP Data
+    /// Parse RESP Response
     /// see: http://redis.io/topics/protocol#resp-protocol-description
 
-    char respDataType = data.at(0);
-    data.remove(0, 1);
+    // simplify variables
+    char* rawData = data.data();
+    int rawLength = data.length();
+    char* respDataType = rawData++;
 
-    // handle Simple Strings
-    if(respDataType == '+') {
-        *result = data.remove(data.length() - 2, 2);
+    // handle Simple String
+    if(result && *respDataType == '+') {
+        *result = QByteArray(rawData, rawLength - 2);
         return true;
     }
 
-    // handle Errors
-    if(respDataType == '-') {
-        *result = data.remove(data.length() - 2, 2);
+    // handle Error
+    if(result && *respDataType == '-') {
+        *result = QByteArray(rawData, rawLength - 2);
         return false;
     }
 
-    // handle Integers
-    if(respDataType == ':') {
-        *result = data.remove(data.length() - 2, 2);
+    // handle Integer
+    if(result && *respDataType == ':') {
+        *result = QByteArray(rawData, rawLength - 2);
         return true;
     }
 
-    // handle Bulk Strings
-    if(respDataType == '$') {
-        char contentLength[11];
-        char* nextChar = (char*)memccpy(contentLength, data.data(), '\r', 9);
-        if(!nextChar) return false;
-        *--nextChar = '\0';
-        *result = data.mid(strlen(contentLength) + 2, atoi(contentLength));
+    // handle Bulk String
+    if(result && *respDataType == '$') {
+        int length = atoi(rawData);
+        rawData = strstr(rawData, "\r") + 2;
+        *result = QByteArray(rawData, length);
+        return true;
+    }
+
+    // handle Array(s)
+    if(*respDataType == '*') {
+        rawData--;
+        QList<QByteArray*>* currentArray = 0;
+        int elementCount = 0;
+        auto getMoreDataIfNeeded = [&con, &data](char** rawData, int min = 0) {
+            // loop until we have enough data
+            while((!min && !strstr(*rawData, "\n")) || (min && data.length() - (*rawData - data.data()) < min)) {
+                // remove allready parsed data from cache
+                data.remove(0, *rawData - data.data());
+
+                // if no data is present so we wait for it
+                if(!con->socket->bytesAvailable()) con->socket->waitForReadyRead();
+
+                // read all available data and update the raw pointer
+                data += con->socket->readAll();
+                *rawData = data.data();
+            }
+        };
+
+        while(true) {
+            // check if we need more data
+            getMoreDataIfNeeded(&rawData);
+
+            // parse packet header
+            char packetType = *rawData++;
+            int length = atoi(rawData);
+            rawData = strstr(rawData, "\r") + 2;
+
+            // if we have a collection packet
+            if(packetType == '*') {
+                elementCount = length;
+                if(!currentArray) currentArray = lstResultArray1;
+                else currentArray = lstResultArray2;
+
+                // stop parsing if data is not wanted by the caller
+                if(!currentArray) break;
+                continue;
+            }
+
+            // otherwise parse the string packet
+            else {
+                getMoreDataIfNeeded(&rawData, length + 2);
+                currentArray->append(new QByteArray(rawData, length));
+                rawData += length + 2;
+            }
+
+            // if we have no elements left, exit
+            if(!--elementCount) break;
+        }
         return true;
     }
 
