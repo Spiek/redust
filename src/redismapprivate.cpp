@@ -2,26 +2,26 @@
 
 RedisMapPrivate::RedisMapPrivate(QString list, QString connectionName)
 {
-    this->redisList = list.toLocal8Bit() + ".";
+    this->redisList = list.toLocal8Bit();
     this->connectionName = connectionName;
 }
 
 void RedisMapPrivate::clear(bool async)
 {
     // Build and execute Command
-    // There is currently no implementation of a DEL MYLIST.* so we executing a script on the server doing the job
-    // src: http://redis.io/commands/del#comment-1006084933
+    // There is currently no implementation of HDEL MYLIST so we executing a script on the server doing the job
+    // src: http://redis.io/commands/del#comment-1006084933 (adapted to hash)
     QByteArray res;
-    RedisMapPrivate::execRedisCommand({"eval", "for _,k in ipairs(redis.call('keys','" + this->redisList + "*')) do redis.call('del',k) end", "0" }, async ? 0 : &res);
+    RedisMapPrivate::execRedisCommand({"eval", "for _,k in ipairs(redis.call('HKEYS','" + this->redisList + "')) do redis.call('HDEL', '" + this->redisList + "', k) end", "0" }, async ? 0 : &res);
 }
 
 bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
 {
     // Build and execute Command
-    // SET key value
-    // src: http://redis.io/commands/SET
+    // HSET list key value
+    // src: http://redis.io/commands/HSET
     QByteArray returnValue;
-    bool result = RedisMapPrivate::execRedisCommand({ "SET", key.prepend(this->redisList), value }, waitForAnswer ? &returnValue : 0);
+    bool result = RedisMapPrivate::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
 
     // determinate result
     if(!waitForAnswer) return result;
@@ -31,10 +31,10 @@ bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswe
 QByteArray RedisMapPrivate::value(QByteArray key)
 {
     // Build and execute Command
-    // GET key
-    // src: http://redis.io/commands/GET
+    // HGET list key
+    // src: http://redis.io/commands/HGET
     QByteArray returnValue;
-    RedisMapPrivate::execRedisCommand({ "GET", key.prepend(this->redisList) }, &returnValue);
+    RedisMapPrivate::execRedisCommand({ "HGET", this->redisList, key }, &returnValue);
 
     // return result
     return returnValue;
