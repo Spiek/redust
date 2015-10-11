@@ -41,6 +41,28 @@ class RedisMap
             return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
         }
 
+        typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type keys(int count = 0, int pos = 0, int *newPos = 0)
+        {
+            typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type list;
+            QList<QByteArray> elements = this->d->keys(count, pos, newPos);
+            for(auto itr = elements.begin(); itr != elements.end();) {
+                list.append(RedisValue<Key>::deserialize(*itr));
+                itr = elements.erase(itr);
+            }
+            return list;
+        }
+
+        typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type values(int count = 0, int pos = 0, int *newPos = 0)
+        {
+            typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type list;
+            QList<QByteArray> elements = this->d->values(count, pos, newPos);
+            for(auto itr = elements.begin(); itr != elements.end();) {
+                list.append(RedisValue<Value>::deserialize(*itr));
+                itr = elements.erase(itr);
+            }
+            return list;
+        }
+
     private:
         RedisMapPrivate* d;
 };

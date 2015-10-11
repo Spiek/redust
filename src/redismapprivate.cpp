@@ -40,7 +40,33 @@ QByteArray RedisMapPrivate::value(QByteArray key)
     return returnValue;
 }
 
-bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray*>* lstResultArray1, QList<QByteArray*>* lstResultArray2)
+QList<QByteArray> RedisMapPrivate::keys(int count, int pos, int* newPos)
+{
+    // if the caller want all keys, we are using HKEYS
+    if(count <= 0) {
+        QList<QByteArray> elements;
+        RedisMapPrivate::execRedisCommand({ "HKEYS", this->redisList }, 0, &elements);
+        return elements;
+    }
+
+    // otherwise we iterate over the keys using SCAN
+    return this->simplifyHScan(count, pos, true, false, newPos);
+}
+
+QList<QByteArray> RedisMapPrivate::values(int count, int pos, int* newPos)
+{
+    // if the caller want all keys, we are using HVALS
+    if(count <= 0) {
+        QList<QByteArray> elements;
+        RedisMapPrivate::execRedisCommand({ "HVALS", this->redisList }, 0, &elements);
+        return elements;
+    }
+
+    // otherwise we iterate over the values using SCAN
+    return this->simplifyHScan(count, pos, false, true, newPos);
+}
+
+bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
 {
     // acquire socket
     bool waitForAnswer = result || lstResultArray1 || lstResultArray2;
@@ -113,7 +139,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     // handle Array(s)
     if(*respDataType == '*') {
         rawData--;
-        QList<QByteArray*>* currentArray = 0;
+        QList<QByteArray>* currentArray = 0;
         int elementCount = 0;
         auto getMoreDataIfNeeded = [&con, &data](char** rawData, int min = 0) {
             // loop until we have enough data
@@ -153,7 +179,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
             // otherwise parse the string packet
             else {
                 getMoreDataIfNeeded(&rawData, length + 2);
-                currentArray->append(new QByteArray(rawData, length));
+                currentArray->append(QByteArray(rawData, length));
                 rawData += length + 2;
             }
 
@@ -165,4 +191,33 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 
     // otherwise we have an parse error
     return false;
+}
+
+
+QList<QByteArray> RedisMapPrivate::simplifyHScan(int count, int pos, bool key, bool value, int *newPos)
+{
+    // if caller don't want a key or a value return an empty list
+    if(!key && !value) return QList<QByteArray>();
+
+    // Build and exec following command
+    // HSCAN list cursor COUNT count
+    // src: http://redis.io/commands/scan
+    QList<QByteArray> type;
+    QList<QByteArray> elements;
+    if(RedisMapPrivate::execRedisCommand({"HSCAN", this->redisList, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, &type, &elements)) {
+        // set new pos if wanted
+        if(newPos && !type.isEmpty()) *newPos = atoi(type.first().data());
+
+        // delete keys or values if wanted
+        if(!key || !value) {
+            int iElement = 0;
+            for(auto itr = elements.begin(); itr != elements.end();) {
+                if(++iElement % 2 == (key ? 0 : 1)) itr = elements.erase(itr);
+                else itr++;
+            }
+        }
+    }
+
+    // return generated elements
+    return elements;
 }
