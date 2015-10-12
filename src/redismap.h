@@ -164,25 +164,45 @@ class RedisMap
             return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
         }
 
-        typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type keys(int count = 0, int pos = 0, int *newPos = 0)
+        typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type keys(int fetchChunkSize = -1)
         {
+            // create result data list
             typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type list;
-            QList<QByteArray> elements = this->d->keys(count, pos, newPos);
-            for(auto itr = elements.begin(); itr != elements.end();) {
+
+            // fetch first result
+            int pos = 0;
+            QList<QByteArray> elements = this->d->keys(fetchChunkSize, pos, &pos);
+
+            // if caller want to select data in chunks so do it
+            if(fetchChunkSize > 0) while(pos != 0) elements += this->d->keys(fetchChunkSize, pos, &pos);
+
+            // deserialize the data
+            for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
                 list.append(RedisValue<Key>::deserialize(*itr));
-                itr = elements.erase(itr);
             }
+
+            // return list
             return list;
         }
 
-        typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type values(int count = 0, int pos = 0, int *newPos = 0)
+        typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type values(int fetchChunkSize = -1)
         {
-            typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type list;
-            QList<QByteArray> elements = this->d->values(count, pos, newPos);
-            for(auto itr = elements.begin(); itr != elements.end();) {
-                list.append(RedisValue<Value>::deserialize(*itr));
-                itr = elements.erase(itr);
+            // create result data list
+            typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type list;
+
+            // fetch first result
+            int pos = 0;
+            QList<QByteArray> elements = this->d->keys(fetchChunkSize, pos, &pos);
+
+            // if caller want to select data in chunks so do it
+            if(fetchChunkSize > 0) while(pos != 0) elements += this->d->keys(fetchChunkSize, pos, &pos);
+
+            // deserialize the data
+            for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
+                list.append(RedisValue<Key>::deserialize(*itr));
             }
+
+            // return list
             return list;
         }
 
