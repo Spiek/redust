@@ -8,6 +8,125 @@
 template< typename Key, typename Value >
 class RedisMap
 {
+    class iterator
+    {
+        public:
+            // self operator overloadings
+            iterator& operator =(iterator other)
+            {
+                this->d = other.d;
+                this->pos = other.pos;
+                this->posRedis = other.posRedis;
+                this->cacheSize = other.cacheSize;
+                this->currentKey = other.currentKey;
+                this->currentValue = other.currentValue;
+                this->queueElements = other.queueElements;
+                return *this;
+            }
+            iterator& operator ++()
+            {
+                return this->forward(1);
+            }
+            iterator& operator ++(int elements)
+            {
+                Q_UNUSED(elements);
+                return this->operator ++();
+            }
+            iterator& operator +=(int elements)
+            {
+                return this->forward(elements);
+            }
+
+            // copy operator overloadings
+            iterator operator +(int elements)
+            {
+                iterator inew = *this;
+                inew.forward(elements);
+                return inew;
+            }
+
+            // comparing operator overloadings
+            bool operator ==(iterator other)
+            {
+                return this->pos == other.pos;
+            }
+            bool operator !=(iterator other)
+            {
+                return !this->operator==(other);
+            }
+
+            // key value overloadings
+            NORM2VALUE(Key) key()
+            {
+                return RedisValue<Key>::deserialize(this->currentKey);
+            }
+            NORM2VALUE(Value) value()
+            {
+                return RedisValue<Value>::deserialize(this->currentValue);
+            }
+            NORM2VALUE(Value) operator *()
+            {
+                return RedisValue<Value>::deserialize(this->currentKey);
+            }
+            NORM2VALUE(Value) operator ->()
+            {
+                return RedisValue<Value>::deserialize(this->currentValue);
+            }
+
+        private:
+            iterator(RedisMapPrivate* prmap, int pos, int cacheSize)
+            {
+                this->d = prmap;
+                this->pos = pos;
+                this->cacheSize = cacheSize;
+                if(pos >= 0) this->forward(1);
+            }
+
+            // helper
+            iterator& forward(int elements)
+            {
+                for(int i = 0; i < elements; i++) {
+                    if(!this->refillQueue()) return *this;
+
+                    // save current key and value
+                    this->currentKey = this->queueElements.takeFirst();
+                    this->currentValue = this->queueElements.takeFirst();
+                }
+                return *this;
+            }
+
+            bool refillQueue()
+            {
+                // if queue is not empty, don't refill
+                if(!this->queueElements.isEmpty()) return true;
+
+                // if we reach the end of the redis position, set current pos to -1 and exit
+                if(this->posRedis == 0) this->pos = -1;
+                if(this->pos == -1) return false;
+
+                // if redis pos is set to -1 (it's an invalid position) set position to begin
+                // Note: this is a little hack for initialiating because redis start and end value are both 0
+                if(this->posRedis == -1) this->posRedis = 0;
+
+                // refill queue
+                this->queueElements = this->d->simplifyHScan(this->cacheSize, this->posRedis, true, true, &this->posRedis);
+
+                // return true if we don't reach the end, otherwise false
+                return !this->queueElements.isEmpty();
+            }
+
+            // data
+            RedisMapPrivate* d;
+            int cacheSize;
+            int posRedis = -1;
+            int pos;
+            QList<QByteArray> queueElements;
+            QByteArray currentKey;
+            QByteArray currentValue;
+
+        friend class RedisMap;
+    };
+
     public:
         RedisMap(QString list, QString connectionName = "redis")
         {
@@ -17,6 +136,16 @@ class RedisMap
         ~RedisMap()
         {
             delete this->d;
+        }
+
+        iterator begin(int cacheSize = 100)
+        {
+            return iterator(this->d, 0, cacheSize);
+        }
+
+        iterator end(int cacheSize = 100)
+        {
+            return iterator(this->d, -1, cacheSize);
         }
 
         void clear(bool async = true)

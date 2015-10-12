@@ -19,13 +19,14 @@ class RedisMapPrivate
         QList<QByteArray> keys(int count = 100, int pos = 0, int *newPos = 0);
         QList<QByteArray> values(int count = 100, int pos = 0, int *newPos = 0);
 
-    private:
-        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0);
-
-    private:
         // command simplifier
         QList<QByteArray> simplifyHScan(int count, int pos, bool key, bool value, int *newPos);
 
+    private:
+        // helper
+        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0);
+
+        // data
         QString connectionName;
         QByteArray redisList;
 };
