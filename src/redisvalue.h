@@ -25,12 +25,8 @@ class RedisValue
     public:
         static inline QByteArray serialize(NORM2VALUE(T)* value) { return value ? QVariant(*value).value<QByteArray>() : QByteArray(); }
         static inline QByteArray serialize(NORM2REFORVALUE(T)  value) { return QVariant(value).value<QByteArray>(); }
-        static inline NORM2VALUE(T) deserialize(QByteArray value) { return QVariant(value).value<NORM2VALUE(T)>(); }
-        static inline bool isSerializeable() {
-            NORM2VALUE(T) t = {};
-            return QVariant(t).canConvert<QByteArray>();
-        }
-        static inline bool isDeserializeable() { return QVariant(QByteArray()).canConvert<NORM2VALUE(T)>(); }
+        static inline NORM2VALUE(T) deserialize(QByteArray* value) { return value ? QVariant(*value).value<NORM2VALUE(T)>() : NORM2VALUE(T)(); }
+        static inline NORM2VALUE(T) deserialize(QByteArray  value) { return QVariant(value).value<NORM2VALUE(T)>(); }
 };
 
 /* Parser for arithmetic types */
@@ -47,14 +43,19 @@ class RedisValue<T, typename std::enable_if<std::is_arithmetic<NORM2VALUE(T)>::v
             NORM2VALUE(T) t = qToBigEndian<NORM2VALUE(T)>(value);
             return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
         }
+        static inline NORM2VALUE(T) deserialize(QByteArray* value) {
+            NORM2VALUE(T) t;
+            if(!value) return t;
+            memcpy(&t, value->data(), sizeof(NORM2VALUE(T)));
+            t = qFromBigEndian<T>(t);
+            return t;
+        }
         static inline NORM2VALUE(T) deserialize(QByteArray value) {
             NORM2VALUE(T) t;
             memcpy(&t, value.data(), sizeof(NORM2VALUE(T)));
             t = qFromBigEndian<T>(t);
             return t;
         }
-        static inline bool isSerializeable() { return true; }
-        static inline bool isDeserializeable() { return true; }
 };
 
 #ifdef REDISMAP_SUPPORT_PROTOBUF
@@ -77,17 +78,17 @@ class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Me
             value.SerializeToArray(data.data(), value.ByteSize());
             return data;
         }
+        static inline NORM2VALUE(T) deserialize(QByteArray* value) {
+            NORM2VALUE(T) t;
+            if(!value) return t;
+            t.ParseFromArray(value->data(), value->length());
+            return t;
+        }
         static inline NORM2VALUE(T) deserialize(QByteArray value) {
             NORM2VALUE(T) t;
             t.ParseFromArray(value.data(), value.length());
             return t;
         }
-
-        // protocol buffer values are always serializeable
-        static inline bool isSerializeable() { return true; }
-
-        // protocol buffer values should always be unserializeable (depends on input data!)
-        static inline bool isDeserializeable() { return true; }
 };
 #endif
 
