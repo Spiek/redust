@@ -80,8 +80,8 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) size += 15 + itr->length();
 
     // 2. build RESP request
-    char* content = (char*)malloc(size);
-    char* stringData = content;
+    char contentValue[size];
+    char* content = contentValue;
     content += sprintf(content, "*%i\r\n", cmd.size());
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
         content += sprintf(content, "$%i\r\n", itr->isEmpty() ? -1 : itr->length());
@@ -92,8 +92,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     }
 
     // 3. exec RESP request
-    con->socket->write(stringData, content - stringData);
-    free(stringData);
+    con->socket->write(contentValue, content - contentValue);
 
     // exit if we don't have to parse the return code
     if(!waitForAnswer) return true;
