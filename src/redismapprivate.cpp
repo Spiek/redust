@@ -104,60 +104,67 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     /// Parse RESP Response
     /// see: http://redis.io/topics/protocol#resp-protocol-description
 
+    // readSegement
+    // - be sure enough data is available to read the next protocol segment
+    //   if not enough data is given remove allready parsed data and realloc the rawData to point to the new data
+    // returns: a pointer to the next char after the end of the segment
+    // Note: if no segmentLength is given the end of the next segment is determined by searching for the next '\n' and returns the position after that char
+    //       if segmentLength is given the end of the next segment is the next position after that segment
+    auto readSegement = [&con, &data](char** rawData, int segmentLength = 0) {
+        // loop until we have enough data present
+        char* protoSegmentEnd = 0;
+        while((!segmentLength && !(protoSegmentEnd = strstr(*rawData, "\n"))) || (segmentLength && data.length() - (*rawData - data.data()) < segmentLength)) {
+            // remove allready parsed data from cache
+            data.remove(0, *rawData - data.data());
+
+            // if no data is present so we wait for it
+            if(!con->socket->bytesAvailable()) con->socket->waitForReadyRead();
+
+            // read all available data and update the raw pointer
+            data += con->socket->readAll();
+            *rawData = data.data();
+        }
+        return !segmentLength ? ++protoSegmentEnd : *rawData + segmentLength + 1;
+    };
+
     // simplify variables
     char* rawData = data.data();
-    int rawLength = data.length();
-    char* respDataType = rawData++;
+    char respDataType = *rawData++;
 
-    // handle Simple String
-    if(result && *respDataType == '+') {
-        *result = QByteArray(rawData, rawLength - 2);
-        return true;
-    }
+    // handle Simple String, Error and Integer
+    if(result && (respDataType == '+' || respDataType == '-' || respDataType == ':')) {
+        // get pointer to end of current segment and be sure we have enough data available to read
+        char* protoSegmentNext = readSegement(&rawData);
 
-    // handle Error
-    if(result && *respDataType == '-') {
-        *result = QByteArray(rawData, rawLength - 2);
-        return false;
-    }
-
-    // handle Integer
-    if(result && *respDataType == ':') {
-        *result = QByteArray(rawData, rawLength - 2);
+        // read segment (but without the segment end chars \r and \n)
+        *result = QByteArray(rawData, protoSegmentNext - rawData - 2);
+        rawData = protoSegmentNext;
         return true;
     }
 
     // handle Bulk String
-    if(result && *respDataType == '$') {
+    if(result && respDataType == '$') {
+        // 1. get string length and be sure we have enough data to read
+        char* protoSegmentNext = readSegement(&rawData);
         int length = atoi(rawData);
-        rawData = strstr(rawData, "\r") + 2;
+        rawData = protoSegmentNext;
+
+        // 2. get whole string of previous parsed length and be sure we have enough data to read
+        protoSegmentNext = readSegement(&rawData, length + 2);
         *result = QByteArray(rawData, length);
+        rawData = protoSegmentNext;
         return true;
     }
 
     // handle Array(s)
-    if(*respDataType == '*') {
+    if(respDataType == '*') {
         rawData--;
         QList<QByteArray>* currentArray = 0;
         int elementCount = 0;
-        auto getMoreDataIfNeeded = [&con, &data](char** rawData, int min = 0) {
-            // loop until we have enough data
-            while((!min && !strstr(*rawData, "\n")) || (min && data.length() - (*rawData - data.data()) < min)) {
-                // remove allready parsed data from cache
-                data.remove(0, *rawData - data.data());
-
-                // if no data is present so we wait for it
-                if(!con->socket->bytesAvailable()) con->socket->waitForReadyRead();
-
-                // read all available data and update the raw pointer
-                data += con->socket->readAll();
-                *rawData = data.data();
-            }
-        };
 
         while(true) {
             // check if we need more data
-            getMoreDataIfNeeded(&rawData);
+            readSegement(&rawData);
 
             // parse packet header
             char packetType = *rawData++;
@@ -177,7 +184,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 
             // otherwise parse the string packet
             else {
-                getMoreDataIfNeeded(&rawData, length + 2);
+                readSegement(&rawData, length + 2);
                 currentArray->append(QByteArray(rawData, length));
                 rawData += length + 2;
             }
