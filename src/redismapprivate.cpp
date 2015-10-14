@@ -150,9 +150,13 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
         rawData = protoSegmentNext;
 
         // 2. get whole string of previous parsed length and be sure we have enough data to read
-        protoSegmentNext = readSegement(&rawData, length + 2);
-        *result = QByteArray(rawData, length);
-        rawData = protoSegmentNext;
+        if(length == -1) {
+            *result = QByteArray();
+        } else {
+            protoSegmentNext = readSegement(&rawData, length + 2);
+            *result = QByteArray(rawData, length);
+            rawData = protoSegmentNext;
+        }
         return true;
     }
 
@@ -183,7 +187,12 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
                 continue;
             }
 
-            // otherwise parse the string packet
+            // if we have a null bulk string, so create a null byte array
+            else if(length == -1) {
+                currentArray->append(QByteArray());
+            }
+
+            // otherwise we have normal bulk string, so parse it
             else {
                 protoSegmentNext = readSegement(&rawData, length + 2);
                 currentArray->append(QByteArray(rawData, length));
