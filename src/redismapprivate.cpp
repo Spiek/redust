@@ -108,10 +108,10 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     // - be sure enough data is available to read the next protocol segment
     //   if not enough data is given remove allready parsed data and realloc the rawData to point to the new data
     // returns: a pointer to the next char after the end of the segment
-    // Note: if no segmentLength is given the end of the next segment is determined by searching for the next '\n' and returns the position after that char
-    //       if segmentLength is given the end of the next segment is the next position after that segment
+    // Note: if no segmentLength is given (segmentLength = 0), the end of the next segment is determined by searching for the next '\n' and returns the position after that char
+    //       if segmentLength is given, the end of the segment is the next char after segmentLength chars
     auto readSegement = [&con, &data](char** rawData, int segmentLength = 0) {
-        // loop until we have enough data present
+        // loop until we have enough data to parse the next segment
         char* protoSegmentEnd = 0;
         while((!segmentLength && !(protoSegmentEnd = strstr(*rawData, "\n"))) || (segmentLength && data.length() - (*rawData - data.data()) < segmentLength)) {
             // remove allready parsed data from cache
@@ -124,7 +124,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
             data += con->socket->readAll();
             *rawData = data.data();
         }
-        return !segmentLength ? ++protoSegmentEnd : *rawData + segmentLength + 1;
+        return !segmentLength ? ++protoSegmentEnd : *rawData + segmentLength;
     };
 
     // simplify variables
@@ -162,14 +162,15 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
         QList<QByteArray>* currentArray = 0;
         int elementCount = 0;
 
+        // loop until we have parsed all segments
         while(true) {
-            // check if we need more data
-            readSegement(&rawData);
+            // read segment
+            char* protoSegmentNext = readSegement(&rawData);
 
             // parse packet header
             char packetType = *rawData++;
             int length = atoi(rawData);
-            rawData = strstr(rawData, "\r") + 2;
+            rawData = protoSegmentNext;
 
             // if we have a collection packet
             if(packetType == '*') {
@@ -184,9 +185,9 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 
             // otherwise parse the string packet
             else {
-                readSegement(&rawData, length + 2);
+                protoSegmentNext = readSegement(&rawData, length + 2);
                 currentArray->append(QByteArray(rawData, length));
-                rawData += length + 2;
+                rawData = protoSegmentNext;
             }
 
             // if we have no elements left, exit
