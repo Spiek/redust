@@ -70,8 +70,8 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 {
     // acquire socket
     bool waitForAnswer = result || lstResultArray1 || lstResultArray2;
-    RedisConnectionReleaser con = RedisConnectionManager::requestConnection(this->connectionName, !waitForAnswer);
-    if(!con.data() || !con->socket) return false;
+    QTcpSocket* socket = RedisConnectionManager::requestConnection(this->connectionName, !waitForAnswer);
+    if(!socket) return false;
 
     /// Build and execute RESP request
     /// see: http://redis.io/topics/protocol#resp-arrays
@@ -92,14 +92,14 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     }
 
     // 3. exec RESP request
-    con->socket->write(contentValue, content - contentValue);
+    socket->write(contentValue, content - contentValue);
 
     // exit if we don't have to parse the return code
     if(!waitForAnswer) return true;
 
     // 4. wait for server return code
-    con->socket->waitForReadyRead();
-    QByteArray data = con->socket->readAll();
+    socket->waitForReadyRead();
+    QByteArray data = socket->readAll();
 
     /// Parse RESP Response
     /// see: http://redis.io/topics/protocol#resp-protocol-description
@@ -110,7 +110,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     // returns: a pointer to the next char after the end of the segment
     // Note: if no segmentLength is given (segmentLength = 0), the end of the next segment is determined by searching for the next '\n' and returns the position after that char
     //       if segmentLength is given, the end of the segment is the next char after segmentLength chars
-    auto readSegement = [&con, &data](char** rawData, int segmentLength = 0) {
+    auto readSegement = [&socket, &data](char** rawData, int segmentLength = 0) {
         // loop until we have enough data to parse the next segment
         char* protoSegmentEnd = 0;
         while((!segmentLength && !(protoSegmentEnd = strstr(*rawData, "\n"))) || (segmentLength && data.length() - (*rawData - data.data()) < segmentLength)) {
@@ -118,10 +118,10 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
             data.remove(0, *rawData - data.data());
 
             // if no data is present so we wait for it
-            if(!con->socket->bytesAvailable()) con->socket->waitForReadyRead();
+            if(!socket->bytesAvailable()) socket->waitForReadyRead();
 
             // read all available data and update the raw pointer
-            data += con->socket->readAll();
+            data += socket->readAll();
             *rawData = data.data();
         }
         return !segmentLength ? ++protoSegmentEnd : *rawData + segmentLength;

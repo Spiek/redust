@@ -1,59 +1,35 @@
 #include "redismapconnectionmanager.h"
 
 QMap<QString, RedisConnectionPool*> RedisConnectionManager::mapConPools;
+QMutex RedisConnectionManager::mutex;
 
-RedisConnectionPool::RedisConnectionPool()
+RedisConnectionPool::RedisConnectionPool(QString redisServer, qint16 redisPort)
 {
-
+    this->strRedisConnectionHost = redisServer;
+    this->intRedisConnectionPort = redisPort;
 }
 
-
-bool RedisConnectionPool::addRedisConnections(QString redisServer, qint16 redisPort, int blockingConnections, int writeOnlyConnections)
+QTcpSocket* RedisConnectionPool::requestConnection(bool writeOnly)
 {
-    // init connections
-    for(int type = 0; type < 2; type++) {
-        auto queueConnection = !type ? &this->queueBlockingConnectionsAvailable : &this->queueWriteOnlyConnections;
-        for(int iConnection = 0; iConnection < (!type ? blockingConnections : writeOnlyConnections); iConnection++) {
-            // create new connection
-            RedisConnection* conRedis = new RedisConnection;
-            conRedis->redisServer = redisServer;
-            conRedis->redisPort = redisPort;
-            conRedis->socket = new QTcpSocket;
-            conRedis->conPool = this;
+    // try to acquire existing redis connection for thread
+    QThread* currentThread = QThread::currentThread();
+    QTcpSocket* con = writeOnly ? this->mapWriteOnlyThreadRedisConnections.value(currentThread) : this->mapThreadRedisConnections.value(currentThread);
 
-            // connect to redis
-            conRedis->socket->connectToHost(conRedis->redisServer, conRedis->redisPort, type ? QIODevice::WriteOnly : QIODevice::ReadWrite);
-            if(!conRedis->socket->waitForConnected(5000)) {
-                qFatal("Cannot connect to Redis Server %s:%i, give up...", qPrintable(conRedis->redisServer), conRedis->redisPort);
-                delete conRedis;
-                return false;
-            }
-
-            // save connection
-            queueConnection->enqueue(conRedis);
+    // if not available create a new one
+    if(!con) {
+        // create new connection
+        QTcpSocket* socket = new QTcpSocket;
+        socket->connectToHost(this->strRedisConnectionHost, this->intRedisConnectionPort, writeOnly ? QIODevice::WriteOnly : QIODevice::ReadWrite);
+        if(!socket->waitForConnected(5000)) {
+            qFatal("Cannot connect to Redis Server %s:%i, give up...", qPrintable(this->strRedisConnectionHost), this->intRedisConnectionPort);
+            delete socket;
+            return 0;
         }
-    }
-    return true;
-}
 
-RedisConnection* RedisConnectionPool::requestConnection(bool writeOnly)
-{
-    RedisConnection* con = 0;
-    if(writeOnly && !queueWriteOnlyConnections.isEmpty()) {
-        con = this->queueWriteOnlyConnections.dequeue();
-        this->queueWriteOnlyConnections.enqueue(con);
+        // and save it into the map
+        con = (writeOnly ? &this->mapWriteOnlyThreadRedisConnections : &this->mapThreadRedisConnections)->insert(currentThread, socket).value();
     }
-    else if(!writeOnly && !queueBlockingConnectionsAvailable.isEmpty()) {
-        con = this->queueBlockingConnectionsAvailable.dequeue();
-        this->queueBlockingConnectionsBlocked.append(con);
-    }
+
+    // return the acquired connection
     return con;
-}
-
-void RedisConnectionPool::freeConnection(RedisConnection* connection)
-{
-    if(this->queueBlockingConnectionsBlocked.contains(connection)) {
-        this->queueBlockingConnectionsBlocked.removeOne(connection);
-        this->queueBlockingConnectionsAvailable.enqueue(connection);
-    }
 }
