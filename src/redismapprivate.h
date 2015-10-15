@@ -22,6 +22,7 @@ class RedisMapPrivate
         QByteArray value(QByteArray key);
         void fetchKeys(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
         void fetchValues(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
+        void fetchAll(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
 
         // command simplifier
         void simplifyHScan(QList<QByteArray> *data, int count, int pos, bool key, bool value, int *newPos);

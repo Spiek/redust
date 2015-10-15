@@ -248,6 +248,50 @@ class RedisMap
             return list;
         }
 
+        typename std::pointer_traits<QMap<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type toMap(int fetchChunkSize = -1)
+        {
+            // create result data list
+            typename std::pointer_traits<QMap<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type map;
+
+            // fetch first result
+            int pos = 0;
+            QList<QByteArray> elements;
+            this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+
+            // if caller want to select data in chunks so do it
+            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+
+            // deserialize the data
+            for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
+                map.insert(RedisValue<Key>::deserialize(*itr), RedisValue<Value>::deserialize(*(itr + 1)));
+            }
+
+            // return map
+            return map;
+        }
+
+        typename std::pointer_traits<QHash<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type toHash(int fetchChunkSize = -1)
+        {
+            // create result data list
+            typename std::pointer_traits<QHash<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type hash;
+
+            // fetch first result
+            int pos = 0;
+            QList<QByteArray> elements;
+            this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+
+            // if caller want to select data in chunks so do it
+            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+
+            // deserialize the data
+            for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
+                hash.insert(RedisValue<Key>::deserialize(*itr), RedisValue<Value>::deserialize(*(itr + 1)));
+            }
+
+            // return hash
+            return hash;
+        }
+
     private:
         RedisMapPrivate* d;
 };

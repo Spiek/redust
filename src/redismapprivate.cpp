@@ -110,6 +110,18 @@ void RedisMapPrivate::fetchValues(QList<QByteArray>* data, int count, int pos, i
     else this->simplifyHScan(data, count, pos, false, true, newPos);
 }
 
+void RedisMapPrivate::fetchAll(QList<QByteArray>* data, int count, int pos, int *newPos)
+{
+    // exit if we have no data to store
+    if(!data) return;
+
+    // if the caller want all keys, we are using HGETALL
+    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HGETALL", this->redisList }, 0, data);
+
+    // otherwise we iterate over the keys using SCAN
+    else this->simplifyHScan(data, count, pos, true, true, newPos);
+}
+
 bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
 {
     // acquire socket
