@@ -15,11 +15,21 @@ void RedisMapPrivate::clear(bool async)
     RedisMapPrivate::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
 }
 
+int RedisMapPrivate::count()
+{
+    // Build and execute Command
+    // HLEN list
+    // src: http://redis.io/commands/hlen
+    QByteArray res;
+    RedisMapPrivate::execRedisCommand({"HLEN", this->redisList }, &res);
+    return res.toInt();
+}
+
 bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
 {
     // Build and execute Command
     // HSET list key value
-    // src: http://redis.io/commands/HSET
+    // src: http://redis.io/commands/hset
     QByteArray returnValue;
     bool result = RedisMapPrivate::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
 
@@ -32,7 +42,7 @@ QByteArray RedisMapPrivate::value(QByteArray key)
 {
     // Build and execute Command
     // HGET list key
-    // src: http://redis.io/commands/HGET
+    // src: http://redis.io/commands/hget
     QByteArray returnValue;
     RedisMapPrivate::execRedisCommand({ "HGET", this->redisList, key }, &returnValue);
 

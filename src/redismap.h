@@ -152,7 +152,12 @@ class RedisMap
 
         void clear(bool async = true)
         {
-            this->d->clear(async);
+            return this->d->clear(async);
+        }
+
+        int count()
+        {
+            return this->d->count();
         }
 
         bool insert(Key key, Value value, bool waitForAnswer = false)

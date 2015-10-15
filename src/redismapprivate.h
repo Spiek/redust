@@ -14,6 +14,7 @@ class RedisMapPrivate
     public:
         RedisMapPrivate(QString list, QString connectionName = "redis");
         void clear(bool async = true);
+        int count();
         bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);
         QByteArray value(QByteArray key);
         QList<QByteArray> keys(int count = 100, int pos = 0, int *newPos = 0);
