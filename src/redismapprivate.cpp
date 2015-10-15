@@ -94,6 +94,16 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
     // 3. exec RESP request
     socket->write(contentValue, content - contentValue);
 
+#ifdef Q_OS_WIN
+    // Write Bug Windows workaround:
+    // in some test cases a del command was not sent to the redis server over the event loop, to fix this behavior force writing the RESP Request to the redis server, every time
+    //
+    // The Qt documentation said:
+    // Note: This function may fail randomly on Windows. Consider using the event loop and the bytesWritten() signal if your software will run on Windows.
+    // src: http://doc.qt.io/qt-5/qabstractsocket.html#waitForBytesWritten
+    if(!waitForAnswer) while(!socket->waitForBytesWritten());
+#endif
+
     // exit if we don't have to parse the return code
     if(!waitForAnswer) return true;
 
@@ -178,13 +188,12 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 
             // if we have a collection packet
             if(packetType == '*') {
-                elementCount = length;
+                elementCount = length + 1;
                 if(!currentArray) currentArray = lstResultArray1;
                 else currentArray = lstResultArray2;
 
                 // stop parsing if data is not wanted by the caller
                 if(!currentArray) break;
-                continue;
             }
 
             // if we have a null bulk string, so create a null byte array

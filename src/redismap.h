@@ -111,8 +111,10 @@ class RedisMap
                 // refill queue
                 this->queueElements = this->d->simplifyHScan(this->cacheSize, this->posRedis, true, true, &this->posRedis);
 
-                // return true if we don't reach the end, otherwise false
-                return !this->queueElements.isEmpty();
+                // if we couldn't get any items then we reached the end
+                // Note: this could happend if we try to get data from an non-existing/empty key
+                //       if this is the case then we call us again so that this iterator is set to end
+                return this->queueElements.isEmpty() ? this->refillQueue() : true;
             }
 
             // data

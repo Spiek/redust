@@ -15,7 +15,7 @@ QTcpSocket* RedisConnectionPool::requestConnection(bool writeOnly)
     QThread* currentThread = QThread::currentThread();
     QTcpSocket* con = writeOnly ? this->mapWriteOnlyThreadRedisConnections.value(currentThread) : this->mapThreadRedisConnections.value(currentThread);
 
-    // if not available create a new one
+    // if no socket is available create a new one
     if(!con) {
         // create new connection
         QTcpSocket* socket = new QTcpSocket;
@@ -26,10 +26,10 @@ QTcpSocket* RedisConnectionPool::requestConnection(bool writeOnly)
             return 0;
         }
 
-        // and save it into the map
+        // save new socket in the corresponding map
         con = (writeOnly ? &this->mapWriteOnlyThreadRedisConnections : &this->mapThreadRedisConnections)->insert(currentThread, socket).value();
     }
 
-    // return the acquired connection
+    // return the acquired socket
     return con;
 }
