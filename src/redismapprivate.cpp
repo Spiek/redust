@@ -38,6 +38,18 @@ bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswe
     else return result && returnValue == "OK";
 }
 
+bool RedisMapPrivate::contains(QByteArray key)
+{
+    // Build and execute Command
+    // HEXISTS list key
+    // src: http://redis.io/commands/hexists
+    QByteArray returnValue;
+    RedisMapPrivate::execRedisCommand({ "HEXISTS", this->redisList, key }, &returnValue);
+
+    // return result
+    return returnValue == "1";
+}
+
 QByteArray RedisMapPrivate::value(QByteArray key)
 {
     // Build and execute Command
