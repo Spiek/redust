@@ -9,10 +9,10 @@ RedisMapPrivate::RedisMapPrivate(QString list, QString connectionName)
 void RedisMapPrivate::clear(bool async)
 {
     // Build and execute Command
-    // There is currently no implementation of HDEL MYLIST so we executing a script on the server doing the job
-    // src: http://redis.io/commands/del#comment-1006084933 (adapted to hash)
+    // We use DEL command to delete the whole HASH list
+    // src: http://redis.io/commands/del
     QByteArray res;
-    RedisMapPrivate::execRedisCommand({"eval", "for _,k in ipairs(redis.call('HKEYS','" + this->redisList + "')) do redis.call('HDEL', '" + this->redisList + "', k) end", "0" }, async ? 0 : &res);
+    RedisMapPrivate::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
 }
 
 bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
