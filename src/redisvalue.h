@@ -81,12 +81,12 @@ class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Me
         static inline NORM2VALUE(T) deserialize(QByteArray* value) {
             NORM2VALUE(T) t;
             if(!value) return t;
-            t.ParseFromArray(value->data(), value->length());
+            if(!value->isEmpty()) t.ParseFromArray(value->data(), value->length());
             return t;
         }
         static inline NORM2VALUE(T) deserialize(QByteArray value) {
             NORM2VALUE(T) t;
-            t.ParseFromArray(value.data(), value.length());
+            if(!value.isEmpty()) t.ParseFromArray(value.data(), value.length());
             return t;
         }
 };
