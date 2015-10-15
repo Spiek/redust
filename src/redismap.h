@@ -170,9 +170,14 @@ class RedisMap
             return !this->d->count();
         }
 
-        bool contains(Key key)
+        bool exists(Key key)
         {
             return this->d->contains(RedisValue<Key>::serialize(key));
+        }
+
+        bool exists()
+        {
+            return this->d->exists();
         }
 
         bool insert(Key key, Value value, bool waitForAnswer = false)

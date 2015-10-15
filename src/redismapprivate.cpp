@@ -50,6 +50,18 @@ bool RedisMapPrivate::contains(QByteArray key)
     return returnValue == "1";
 }
 
+bool RedisMapPrivate::exists()
+{
+    // Build and execute Command
+    // EXISTS list
+    // src: http://redis.io/commands/exists
+    QByteArray returnValue;
+    RedisMapPrivate::execRedisCommand({ "EXISTS", this->redisList }, &returnValue);
+
+    // return result
+    return returnValue == "1";
+}
+
 QByteArray RedisMapPrivate::value(QByteArray key)
 {
     // Build and execute Command
