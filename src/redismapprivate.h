@@ -18,6 +18,7 @@ class RedisMapPrivate
         bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);
         bool contains(QByteArray key);
         bool exists();
+        bool remove(QByteArray key, bool waitForAnswer = true);
         QByteArray value(QByteArray key);
         QList<QByteArray> keys(int count = 100, int pos = 0, int *newPos = 0);
         QList<QByteArray> values(int count = 100, int pos = 0, int *newPos = 0);

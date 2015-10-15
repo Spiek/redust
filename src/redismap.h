@@ -180,6 +180,19 @@ class RedisMap
             return this->d->exists();
         }
 
+        bool remove(Key key, bool waitForAnswer = true)
+        {
+            return this->d->remove(RedisValue<Key>::serialize(key), waitForAnswer);
+        }
+
+        Value take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
+        {
+            Value value = this->value(key);
+            bool rResult = this->remove(key, waitForAnswer);
+            if(removeResult) *removeResult = rResult;
+            return value;
+        }
+
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
             return this->d->insert(RedisValue<Key>::serialize(key),

@@ -62,6 +62,18 @@ bool RedisMapPrivate::exists()
     return returnValue == "1";
 }
 
+bool RedisMapPrivate::remove(QByteArray key, bool waitForAnswer)
+{
+    // Build and execute Command
+    // HDEL list key
+    // src: http://redis.io/commands/hdel
+    QByteArray returnValue;
+    RedisMapPrivate::execRedisCommand({ "HDEL", this->redisList, key}, waitForAnswer ? &returnValue : 0);
+
+    // return result
+    return waitForAnswer ? returnValue == "1" : true;
+}
+
 QByteArray RedisMapPrivate::value(QByteArray key)
 {
     // Build and execute Command
@@ -109,7 +121,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 
     /// Build and execute RESP request
     /// see: http://redis.io/topics/protocol#resp-arrays
-    // 1. determine allocation size
+    // 1. determine RESP request packet size
     int size = 15;
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) size += 15 + itr->length();
 
