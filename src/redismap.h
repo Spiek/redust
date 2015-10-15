@@ -109,7 +109,7 @@ class RedisMap
                 if(this->posRedis == -1) this->posRedis = 0;
 
                 // refill queue
-                this->queueElements = this->d->simplifyHScan(this->cacheSize, this->posRedis, true, true, &this->posRedis);
+                this->d->simplifyHScan(&this->queueElements, this->cacheSize, this->posRedis, true, true, &this->posRedis);
 
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
