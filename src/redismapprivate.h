@@ -20,11 +20,11 @@ class RedisMapPrivate
         bool exists();
         bool remove(QByteArray key, bool waitForAnswer = true);
         QByteArray value(QByteArray key);
-        QList<QByteArray> keys(int count = 100, int pos = 0, int *newPos = 0);
-        QList<QByteArray> values(int count = 100, int pos = 0, int *newPos = 0);
+        void fetchKeys(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
+        void fetchValues(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
 
         // command simplifier
-        QList<QByteArray> simplifyHScan(int count, int pos, bool key, bool value, int *newPos);
+        void simplifyHScan(QList<QByteArray> *data, int count, int pos, bool key, bool value, int *newPos);
 
     private:
         // helper

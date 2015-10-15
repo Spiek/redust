@@ -86,30 +86,28 @@ QByteArray RedisMapPrivate::value(QByteArray key)
     return returnValue;
 }
 
-QList<QByteArray> RedisMapPrivate::keys(int count, int pos, int* newPos)
+void RedisMapPrivate::fetchKeys(QList<QByteArray>* data, int count, int pos, int* newPos)
 {
+    // exit if we have no data to store
+    if(!data) return;
+
     // if the caller want all keys, we are using HKEYS
-    if(count <= 0) {
-        QList<QByteArray> elements;
-        RedisMapPrivate::execRedisCommand({ "HKEYS", this->redisList }, 0, &elements);
-        return elements;
-    }
+    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HKEYS", this->redisList }, 0, data);
 
     // otherwise we iterate over the keys using SCAN
-    return this->simplifyHScan(count, pos, true, false, newPos);
+    else this->simplifyHScan(data, count, pos, true, false, newPos);
 }
 
-QList<QByteArray> RedisMapPrivate::values(int count, int pos, int* newPos)
+void RedisMapPrivate::fetchValues(QList<QByteArray>* data, int count, int pos, int* newPos)
 {
-    // if the caller want all keys, we are using HVALS
-    if(count <= 0) {
-        QList<QByteArray> elements;
-        RedisMapPrivate::execRedisCommand({ "HVALS", this->redisList }, 0, &elements);
-        return elements;
-    }
+    // exit if we have no data to store
+    if(!data) return;
 
-    // otherwise we iterate over the values using SCAN
-    return this->simplifyHScan(count, pos, false, true, newPos);
+    // if the caller want all keys, we are using HVALS
+    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HVALS", this->redisList }, 0, data);
+
+    // otherwise we iterate over the keys using SCAN
+    else this->simplifyHScan(data, count, pos, false, true, newPos);
 }
 
 bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
@@ -265,10 +263,10 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 }
 
 
-QList<QByteArray> RedisMapPrivate::simplifyHScan(int count, int pos, bool key, bool value, int *newPos)
+void RedisMapPrivate::simplifyHScan(QList<QByteArray>* data, int count, int pos, bool key, bool value, int *newPos)
 {
     // if caller don't want a key or a value return an empty list
-    if(!key && !value) return QList<QByteArray>();
+    if(!data || (!key && !value)) return;
 
     // Build and exec following command
     // HSCAN list cursor COUNT count
@@ -287,8 +285,6 @@ QList<QByteArray> RedisMapPrivate::simplifyHScan(int count, int pos, bool key, b
                 else itr++;
             }
         }
+        data->append(elements);
     }
-
-    // return generated elements
-    return elements;
 }

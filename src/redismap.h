@@ -211,10 +211,11 @@ class RedisMap
 
             // fetch first result
             int pos = 0;
-            QList<QByteArray> elements = this->d->keys(fetchChunkSize, pos, &pos);
+            QList<QByteArray> elements;
+            this->d->fetchKeys(&elements, fetchChunkSize, pos, &pos);
 
             // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) elements += this->d->keys(fetchChunkSize, pos, &pos);
+            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchKeys(&elements, fetchChunkSize, pos, &pos);
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
@@ -232,10 +233,11 @@ class RedisMap
 
             // fetch first result
             int pos = 0;
-            QList<QByteArray> elements = this->d->keys(fetchChunkSize, pos, &pos);
+            QList<QByteArray> elements;
+            this->d->fetchValues(&elements, fetchChunkSize, pos, &pos);
 
             // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) elements += this->d->keys(fetchChunkSize, pos, &pos);
+            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchValues(&elements, fetchChunkSize, pos, &pos);
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
