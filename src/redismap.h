@@ -160,6 +160,16 @@ class RedisMap
             return this->d->count();
         }
 
+        bool empty()
+        {
+            return this->isEmpty();
+        }
+
+        bool isEmpty()
+        {
+            return !this->d->count();
+        }
+
         bool contains(Key key)
         {
             return this->d->contains(RedisValue<Key>::serialize(key));
