@@ -18,9 +18,18 @@ class RedisHash
                 this->pos = other.pos;
                 this->posRedis = other.posRedis;
                 this->cacheSize = other.cacheSize;
-                this->currentKey = other.currentKey;
-                this->currentValue = other.currentValue;
                 this->queueElements = other.queueElements;
+
+                // copy key data
+                this->currentKey = other.currentKey;
+                this->currentKeyVal = other.currentKeyVal;
+                this->keyLoaded = other.keyLoaded;
+
+                // copy value data
+                this->currentValue = other.currentValue;
+                this->currentValueVal = other.currentValueVal;
+                this->valueLoaded = other.valueLoaded;
+
                 return *this;
             }
             iterator& operator ++()
@@ -58,19 +67,23 @@ class RedisHash
             // key value overloadings
             NORM2VALUE(Key) key()
             {
-                return RedisValue<Key>::deserialize(this->currentKey);
+                this->loadEntry(true, false);
+                return this->currentKeyVal;
             }
             NORM2VALUE(Value) value()
             {
-                return RedisValue<Value>::deserialize(this->currentValue);
+                this->loadEntry(false, true);
+                return this->currentValueVal;
             }
             NORM2VALUE(Value) operator *()
             {
-                return RedisValue<Value>::deserialize(this->currentKey);
+                this->loadEntry(false, true);
+                return this->currentValueVal;
             }
-            NORM2VALUE(Value) operator ->()
+            NORM2POINTER(Value) operator ->()
             {
-                return RedisValue<Value>::deserialize(this->currentValue);
+                this->loadEntry(false, true);
+                return &this->currentValueVal;
             }
 
         private:
@@ -85,6 +98,13 @@ class RedisHash
             // helper
             iterator& forward(int elements)
             {
+                // reset current loaded key and value status
+                if(elements > 0) {
+                    this->keyLoaded = false;
+                    this->valueLoaded = false;
+                }
+
+                // navigate elements forward
                 for(int i = 0; i < elements; i++) {
                     if(!this->refillQueue()) return *this;
 
@@ -117,6 +137,21 @@ class RedisHash
                 return this->queueElements.isEmpty() ? this->refillQueue() : true;
             }
 
+            void loadEntry(bool key, bool value)
+            {
+                // load key (if not allready happened)
+                if(key && !this->keyLoaded) {
+                    this->currentKeyVal = RedisValue<Key>::deserialize(this->currentKey);
+                    this->keyLoaded = true;
+                }
+
+                // load value (if not allready happened)
+                if(value && !this->valueLoaded) {
+                    this->currentValueVal = RedisValue<Value>::deserialize(this->currentValue);
+                    this->valueLoaded = true;
+                }
+            }
+
             // data
             RedisMapPrivate* d;
             int cacheSize;
@@ -125,6 +160,10 @@ class RedisHash
             QList<QByteArray> queueElements;
             QByteArray currentKey;
             QByteArray currentValue;
+            NORM2VALUE(Key) currentKeyVal;
+            NORM2VALUE(Value) currentValueVal;
+            bool keyLoaded = false;
+            bool valueLoaded = false;
 
         friend class RedisHash;
     };

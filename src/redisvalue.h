@@ -14,7 +14,7 @@
     #include <google/protobuf/message.h>
 #endif
 
-// value type conversation helpers
+// Template to normalize T to Value Type
 template< typename T>
 struct ValueType
 { typedef T type; };
@@ -28,6 +28,7 @@ struct ValueType<T&>
 {  typedef typename std::remove_reference<T>::type type; };
 
 
+// Template to normalize T to Value or Reference Type
 template< typename T>
 struct ValueRefType
 { typedef T type; };
@@ -37,9 +38,10 @@ struct ValueRefType<T*>
 {  typedef typename std::remove_pointer<T>::type type; };
 
 
-// template generation helpers
+// Type normalisations helper macros
 #define NORM2VALUE(T) typename ValueType<T>::type
 #define NORM2REFORVALUE(T) typename ValueRefType<T>::type
+#define NORM2POINTER(T) typename ValueType<T>::type*
 
 /* Parser for QVariant types */
 template< typename T, typename Enable = void >
