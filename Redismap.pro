@@ -19,7 +19,7 @@ TEMPLATE = app
 SOURCES += src/redismapconnectionmanager.cpp \
            src/redismapprivate.cpp
 
-HEADERS += src/redismap.h \
+HEADERS += src/redishash.h \
            src/redismapconnectionmanager.h \
            src/redisvalue.h \
            src/redismapprivate.h

@@ -6,7 +6,7 @@
 #include "redismapprivate.h"
 
 template< typename Key, typename Value >
-class RedisMap
+class RedisHash
 {
     class iterator
     {
@@ -126,16 +126,16 @@ class RedisMap
             QByteArray currentKey;
             QByteArray currentValue;
 
-        friend class RedisMap;
+        friend class RedisHash;
     };
 
     public:
-        RedisMap(QString list, QString connectionName = "redis")
+        RedisHash(QString list, QString connectionName = "redis")
         {
             this->d = new RedisMapPrivate(list, connectionName);
         }
 
-        ~RedisMap()
+        ~RedisHash()
         {
             delete this->d;
         }
