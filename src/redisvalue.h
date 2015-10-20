@@ -14,9 +14,32 @@
     #include <google/protobuf/message.h>
 #endif
 
+// value type conversation helpers
+template< typename T>
+struct ValueType
+{ typedef T type; };
+
+template< typename T>
+struct ValueType<T*>
+{  typedef typename std::remove_pointer<T>::type type; };
+
+template< typename T>
+struct ValueType<T&>
+{  typedef typename std::remove_reference<T>::type type; };
+
+
+template< typename T>
+struct ValueRefType
+{ typedef T type; };
+
+template< typename T>
+struct ValueRefType<T*>
+{  typedef typename std::remove_pointer<T>::type type; };
+
+
 // template generation helpers
-#define NORM2VALUE(T) typename std::remove_reference<typename std::remove_pointer<T>::type>::type
-#define NORM2REFORVALUE(T) typename std::remove_pointer<T>::type
+#define NORM2VALUE(T) typename ValueType<T>::type
+#define NORM2REFORVALUE(T) typename ValueRefType<T>::type
 
 /* Parser for QVariant types */
 template< typename T, typename Enable = void >

@@ -185,9 +185,9 @@ class RedisHash
             return this->d->remove(RedisValue<Key>::serialize(key), waitForAnswer);
         }
 
-        Value take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
+        NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
         {
-            Value value = this->value(key);
+            NORM2VALUE(Value) value = this->value(key);
             bool rResult = this->remove(key, waitForAnswer);
             if(removeResult) *removeResult = rResult;
             return value;
@@ -199,15 +199,15 @@ class RedisHash
                                    RedisValue<Value>::serialize(value), waitForAnswer);
         }
 
-        typename std::pointer_traits<NORM2VALUE(Value)*>::element_type value(Key key)
+        NORM2VALUE(Value) value(Key key)
         {
             return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
         }
 
-        typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type keys(int fetchChunkSize = -1)
+        QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
         {
             // create result data list
-            typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type list;
+            QList<NORM2VALUE(Key)> list;
 
             // fetch first result
             int pos = 0;
@@ -226,10 +226,10 @@ class RedisHash
             return list;
         }
 
-        typename std::pointer_traits<QList<NORM2VALUE(Value)>*>::element_type values(int fetchChunkSize = -1)
+        QList<NORM2VALUE(Value)> values(int fetchChunkSize = -1)
         {
             // create result data list
-            typename std::pointer_traits<QList<NORM2VALUE(Key)>*>::element_type list;
+            QList<NORM2VALUE(Value)> list;
 
             // fetch first result
             int pos = 0;
@@ -248,10 +248,10 @@ class RedisHash
             return list;
         }
 
-        typename std::pointer_traits<QMap<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type toMap(int fetchChunkSize = -1)
+        QMap<NORM2VALUE(Key),NORM2VALUE(Value)> toMap(int fetchChunkSize = -1)
         {
             // create result data list
-            typename std::pointer_traits<QMap<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type map;
+            QMap<NORM2VALUE(Key),NORM2VALUE(Value)> map;
 
             // fetch first result
             int pos = 0;
@@ -270,10 +270,10 @@ class RedisHash
             return map;
         }
 
-        typename std::pointer_traits<QHash<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type toHash(int fetchChunkSize = -1)
+        QHash<NORM2VALUE(Key),NORM2VALUE(Value)> toHash(int fetchChunkSize = -1)
         {
             // create result data list
-            typename std::pointer_traits<QHash<NORM2VALUE(Key),NORM2VALUE(Value)>*>::element_type hash;
+            QHash<NORM2VALUE(Key),NORM2VALUE(Value)> hash;
 
             // fetch first result
             int pos = 0;
