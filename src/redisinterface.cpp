@@ -38,7 +38,7 @@ bool RedisInterface::hset(QByteArray key, QByteArray value, bool waitForAnswer)
     else return result && returnValue == "OK";
 }
 
-bool RedisInterface::contains(QByteArray key)
+bool RedisInterface::hexists(QByteArray key)
 {
     // Build and execute Command
     // HEXISTS list key

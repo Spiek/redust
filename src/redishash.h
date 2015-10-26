@@ -211,7 +211,7 @@ class RedisHash
 
         bool exists(Key key)
         {
-            return this->d->contains(RedisValue<Key>::serialize(key));
+            return this->d->hexists(RedisValue<Key>::serialize(key));
         }
 
         bool exists()
