@@ -234,7 +234,7 @@ class RedisHash
 
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
-            return this->d->insert(RedisValue<Key>::serialize(key),
+            return this->d->hset(RedisValue<Key>::serialize(key),
                                    RedisValue<Value>::serialize(value), waitForAnswer);
         }
 

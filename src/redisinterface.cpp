@@ -25,7 +25,7 @@ int RedisInterface::hlen()
     return res.toInt();
 }
 
-bool RedisInterface::insert(QByteArray key, QByteArray value, bool waitForAnswer)
+bool RedisInterface::hset(QByteArray key, QByteArray value, bool waitForAnswer)
 {
     // Build and execute Command
     // HSET list key value

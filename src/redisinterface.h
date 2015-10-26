@@ -15,7 +15,7 @@ class RedisInterface
         RedisInterface(QString list, QString connectionName = "redis");
         void del(bool async = true);
         int hlen();
-        bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);
+        bool hset(QByteArray key, QByteArray value, bool waitForAnswer = false);
         bool contains(QByteArray key);
         bool exists();
         bool remove(QByteArray key, bool waitForAnswer = true);
