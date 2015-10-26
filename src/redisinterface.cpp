@@ -6,7 +6,7 @@ RedisInterface::RedisInterface(QString list, QString connectionName)
     this->connectionName = connectionName;
 }
 
-void RedisInterface::clear(bool async)
+void RedisInterface::del(bool async)
 {
     // Build and execute Command
     // We use DEL command to delete the whole HASH list

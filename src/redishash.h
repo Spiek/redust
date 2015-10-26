@@ -191,7 +191,7 @@ class RedisHash
 
         void clear(bool async = true)
         {
-            return this->d->clear(async);
+            return this->d->del(async);
         }
 
         int count()
