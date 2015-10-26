@@ -13,21 +13,27 @@ class RedisInterface
 {
     public:
         RedisInterface(QString list, QString connectionName = "redis");
+
+        // Key-Value Redis Functions
         void del(bool async = true);
+        bool exists();
+
+        // Hash Redis Functions
         int hlen();
         bool hset(QByteArray key, QByteArray value, bool waitForAnswer = false);
         bool hexists(QByteArray key);
-        bool exists();
         bool hdel(QByteArray key, bool waitForAnswer = true);
         QByteArray hget(QByteArray key);
         void hkeys(QList<QByteArray>& result);
         void hvals(QList<QByteArray>& result);
-        void scan(QList<QByteArray>* keys, QList<QByteArray>* values, int count = 100, int pos = 0, int *newPos = 0);
-        void scan(QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
-        void scan(QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
         void hgetall(QList<QByteArray>& result);
         void hgetall(QMap<QByteArray, QByteArray>& keyValues);
         void hgetall(QHash<QByteArray, QByteArray>& keyValues);
+
+        // Scan Redis Functions
+        void scan(QList<QByteArray>* keys, QList<QByteArray>* values, int count = 100, int pos = 0, int *newPos = 0);
+        void scan(QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
+        void scan(QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
 
     private:
         // command simplifier
