@@ -18,7 +18,7 @@ class RedisInterface
         bool hset(QByteArray key, QByteArray value, bool waitForAnswer = false);
         bool hexists(QByteArray key);
         bool exists();
-        bool remove(QByteArray key, bool waitForAnswer = true);
+        bool hdel(QByteArray key, bool waitForAnswer = true);
         QByteArray value(QByteArray key);
         void fetchKeys(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
         void fetchValues(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);

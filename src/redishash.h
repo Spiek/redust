@@ -221,7 +221,7 @@ class RedisHash
 
         bool remove(Key key, bool waitForAnswer = true)
         {
-            return this->d->remove(RedisValue<Key>::serialize(key), waitForAnswer);
+            return this->d->hdel(RedisValue<Key>::serialize(key), waitForAnswer);
         }
 
         NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)

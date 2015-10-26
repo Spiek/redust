@@ -62,7 +62,7 @@ bool RedisInterface::exists()
     return returnValue == "1";
 }
 
-bool RedisInterface::remove(QByteArray key, bool waitForAnswer)
+bool RedisInterface::hdel(QByteArray key, bool waitForAnswer)
 {
     // Build and execute Command
     // HDEL list key
