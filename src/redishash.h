@@ -240,7 +240,7 @@ class RedisHash
 
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
+            return RedisValue<Value>::deserialize(this->d->hget(RedisValue<Key>::serialize(key)));
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)

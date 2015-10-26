@@ -74,7 +74,7 @@ bool RedisInterface::hdel(QByteArray key, bool waitForAnswer)
     return waitForAnswer ? returnValue == "1" : true;
 }
 
-QByteArray RedisInterface::value(QByteArray key)
+QByteArray RedisInterface::hget(QByteArray key)
 {
     // Build and execute Command
     // HGET list key
