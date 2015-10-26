@@ -196,7 +196,7 @@ class RedisHash
 
         int count()
         {
-            return this->d->count();
+            return this->d->hlen();
         }
 
         bool empty()
@@ -206,7 +206,7 @@ class RedisHash
 
         bool isEmpty()
         {
-            return !this->d->count();
+            return !this->d->hlen();
         }
 
         bool exists(Key key)

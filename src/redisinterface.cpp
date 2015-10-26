@@ -15,7 +15,7 @@ void RedisInterface::del(bool async)
     RedisInterface::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
 }
 
-int RedisInterface::count()
+int RedisInterface::hlen()
 {
     // Build and execute Command
     // HLEN list
