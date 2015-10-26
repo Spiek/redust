@@ -86,41 +86,71 @@ QByteArray RedisInterface::hget(QByteArray key)
     return returnValue;
 }
 
-void RedisInterface::fetchKeys(QList<QByteArray>* data, int count, int pos, int* newPos)
+void RedisInterface::hkeys(QList<QByteArray>& result)
 {
-    // exit if we have no data to store
-    if(!data) return;
-
-    // if the caller want all keys, we are using HKEYS
-    if(count <= 0) RedisInterface::execRedisCommand({ "HKEYS", this->redisList }, 0, data);
-
-    // otherwise we iterate over the keys using SCAN
-    else this->simplifyHScan(data, count, pos, true, false, newPos);
+    // Build and execute Command
+    // HKEYS list
+    // src: http://redis.io/commands/hkeys
+    RedisInterface::execRedisCommand({ "HKEYS", this->redisList }, 0, &result);
 }
 
-void RedisInterface::fetchValues(QList<QByteArray>* data, int count, int pos, int* newPos)
+void RedisInterface::hvals(QList<QByteArray> &result)
 {
-    // exit if we have no data to store
-    if(!data) return;
-
-    // if the caller want all keys, we are using HVALS
-    if(count <= 0) RedisInterface::execRedisCommand({ "HVALS", this->redisList }, 0, data);
-
-    // otherwise we iterate over the keys using SCAN
-    else this->simplifyHScan(data, count, pos, false, true, newPos);
+    // Build and execute Command
+    // HVALS list
+    // src: http://redis.io/commands/hvals
+    RedisInterface::execRedisCommand({ "HVALS", this->redisList }, 0, &result);
 }
 
-void RedisInterface::fetchAll(QList<QByteArray>* data, int count, int pos, int *newPos)
+
+void RedisInterface::scan(QList<QByteArray>* resultKeys, QList<QByteArray>* resultValues, int count, int pos, int* newPos)
 {
-    // exit if we have no data to store
-    if(!data) return;
-
-    // if the caller want all keys, we are using HGETALL
-    if(count <= 0) RedisInterface::execRedisCommand({ "HGETALL", this->redisList }, 0, data);
-
-    // otherwise we iterate over the keys using SCAN
-    else this->simplifyHScan(data, count, pos, true, true, newPos);
+    return this->simplifyHScan(0, resultKeys, resultValues, 0, count, pos, newPos);
 }
+
+void RedisInterface::scan(QList<QByteArray>& keyValues, int count, int pos, int* newPos)
+{
+    return this->simplifyHScan(&keyValues, 0, 0, 0, count, pos, newPos);
+}
+
+void RedisInterface::scan(QMap<QByteArray, QByteArray>& keyValues, int count, int pos, int* newPos)
+{
+    return this->simplifyHScan(0, 0, 0, &keyValues, count, pos, newPos);
+}
+
+
+void RedisInterface::hgetall(QList<QByteArray>& result)
+{
+    // Build and execute Command
+    // HGETALL list
+    // src: http://redis.io/commands/hgetall
+    RedisInterface::execRedisCommand({ "HGETALL", this->redisList }, 0, &result);
+}
+
+void RedisInterface::hgetall(QMap<QByteArray, QByteArray>& result)
+{
+    // get data
+    QList<QByteArray> elements;
+    this->hgetall(elements);
+
+    // copy elements to qmap
+    for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
+        result.insert(*itr, *(itr + 1));
+    }
+}
+
+void RedisInterface::hgetall(QHash<QByteArray, QByteArray>& result)
+{
+    // get data
+    QList<QByteArray> elements;
+    this->hgetall(elements);
+
+    // copy elements to qmap
+    for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
+        result.insert(*itr, *(itr + 1));
+    }
+}
+
 
 bool RedisInterface::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
 {
@@ -275,10 +305,10 @@ bool RedisInterface::execRedisCommand(std::initializer_list<QByteArray> cmd, QBy
 }
 
 
-void RedisInterface::simplifyHScan(QList<QByteArray>* data, int count, int pos, bool key, bool value, int *newPos)
+void RedisInterface::simplifyHScan(QList<QByteArray> *lstKeyValues, QList<QByteArray>* keys, QList<QByteArray>* values, QMap<QByteArray, QByteArray>* keyValues, int count, int pos, int* newPos)
 {
-    // if caller don't want a key or a value return an empty list
-    if(!data || (!key && !value)) return;
+    // if caller don't want any data, exit
+    if(!lstKeyValues && !keys && !values && !keyValues) return;
 
     // Build and exec following command
     // HSCAN list cursor COUNT count
@@ -289,14 +319,20 @@ void RedisInterface::simplifyHScan(QList<QByteArray>* data, int count, int pos, 
         // set new pos if wanted
         if(newPos && !type.isEmpty()) *newPos = atoi(type.first().data());
 
-        // delete keys or values if wanted
-        if(!key || !value) {
-            int iElement = 0;
-            for(auto itr = elements.begin(); itr != elements.end();) {
-                if(++iElement % 2 == (key ? 0 : 1)) itr = elements.erase(itr);
-                else itr++;
-            }
+        // copy elements to given data
+        for(auto itr = elements.begin(); itr != elements.end();) {
+            // save key if wanted
+            if(keys) keys->append(*itr);
+            if(lstKeyValues) lstKeyValues->append(*itr);
+            itr++;
+
+            // save value if wanted
+            if(values) values->append(*itr);
+            if(lstKeyValues) lstKeyValues->append(*itr);
+
+            // save keyvalues
+            if(keyValues) keyValues->insert(*(itr - 1), *itr);
+            itr++;
         }
-        data->append(elements);
     }
 }

@@ -20,14 +20,19 @@ class RedisInterface
         bool exists();
         bool hdel(QByteArray key, bool waitForAnswer = true);
         QByteArray hget(QByteArray key);
-        void fetchKeys(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
-        void fetchValues(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
-        void fetchAll(QList<QByteArray>* data, int count = 100, int pos = 0, int *newPos = 0);
-
-        // command simplifier
-        void simplifyHScan(QList<QByteArray> *data, int count, int pos, bool key, bool value, int *newPos);
+        void hkeys(QList<QByteArray>& result);
+        void hvals(QList<QByteArray>& result);
+        void scan(QList<QByteArray>* keys, QList<QByteArray>* values, int count = 100, int pos = 0, int *newPos = 0);
+        void scan(QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
+        void scan(QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
+        void hgetall(QList<QByteArray>& result);
+        void hgetall(QMap<QByteArray, QByteArray>& keyValues);
+        void hgetall(QHash<QByteArray, QByteArray>& keyValues);
 
     private:
+        // command simplifier
+        void simplifyHScan(QList<QByteArray> *lstKeyValues, QList<QByteArray> *keys, QList<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos);
+
         // helper
         bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0);
 
