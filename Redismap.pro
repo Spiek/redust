@@ -17,12 +17,12 @@ TEMPLATE = app
 
 
 SOURCES += src/redismapconnectionmanager.cpp \
-           src/redismapprivate.cpp
+           src/redisinterface.cpp
 
 HEADERS += src/redishash.h \
            src/redismapconnectionmanager.h \
            src/redisvalue.h \
-           src/redismapprivate.h
+           src/redisinterface.h
 INCLUDEPATH += src
 
 # Tests

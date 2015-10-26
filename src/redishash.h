@@ -3,7 +3,7 @@
 
 // redis
 #include "redisvalue.h"
-#include "redismapprivate.h"
+#include "redisinterface.h"
 
 template< typename Key, typename Value >
 class RedisHash
@@ -87,7 +87,7 @@ class RedisHash
             }
 
         private:
-            iterator(RedisMapPrivate* prmap, int pos, int cacheSize)
+            iterator(RedisInterface* prmap, int pos, int cacheSize)
             {
                 this->d = prmap;
                 this->pos = pos;
@@ -153,7 +153,7 @@ class RedisHash
             }
 
             // data
-            RedisMapPrivate* d;
+            RedisInterface* d;
             int cacheSize;
             int posRedis = -1;
             int pos;
@@ -171,7 +171,7 @@ class RedisHash
     public:
         RedisHash(QString list, QString connectionName = "redis")
         {
-            this->d = new RedisMapPrivate(list, connectionName);
+            this->d = new RedisInterface(list, connectionName);
         }
 
         ~RedisHash()
@@ -332,7 +332,7 @@ class RedisHash
         }
 
     private:
-        RedisMapPrivate* d;
+        RedisInterface* d;
 };
 
 

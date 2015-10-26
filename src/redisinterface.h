@@ -9,10 +9,10 @@
 // redis
 #include "redismapconnectionmanager.h"
 
-class RedisMapPrivate
+class RedisInterface
 {
     public:
-        RedisMapPrivate(QString list, QString connectionName = "redis");
+        RedisInterface(QString list, QString connectionName = "redis");
         void clear(bool async = true);
         int count();
         bool insert(QByteArray key, QByteArray value, bool waitForAnswer = false);

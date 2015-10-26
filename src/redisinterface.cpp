@@ -1,128 +1,128 @@
-#include "redismapprivate.h"
+#include "redisinterface.h"
 
-RedisMapPrivate::RedisMapPrivate(QString list, QString connectionName)
+RedisInterface::RedisInterface(QString list, QString connectionName)
 {
     this->redisList = list.toLocal8Bit();
     this->connectionName = connectionName;
 }
 
-void RedisMapPrivate::clear(bool async)
+void RedisInterface::clear(bool async)
 {
     // Build and execute Command
     // We use DEL command to delete the whole HASH list
     // src: http://redis.io/commands/del
     QByteArray res;
-    RedisMapPrivate::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
+    RedisInterface::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
 }
 
-int RedisMapPrivate::count()
+int RedisInterface::count()
 {
     // Build and execute Command
     // HLEN list
     // src: http://redis.io/commands/hlen
     QByteArray res;
-    RedisMapPrivate::execRedisCommand({"HLEN", this->redisList }, &res);
+    RedisInterface::execRedisCommand({"HLEN", this->redisList }, &res);
     return res.toInt();
 }
 
-bool RedisMapPrivate::insert(QByteArray key, QByteArray value, bool waitForAnswer)
+bool RedisInterface::insert(QByteArray key, QByteArray value, bool waitForAnswer)
 {
     // Build and execute Command
     // HSET list key value
     // src: http://redis.io/commands/hset
     QByteArray returnValue;
-    bool result = RedisMapPrivate::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
+    bool result = RedisInterface::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
 
     // determinate result
     if(!waitForAnswer) return result;
     else return result && returnValue == "OK";
 }
 
-bool RedisMapPrivate::contains(QByteArray key)
+bool RedisInterface::contains(QByteArray key)
 {
     // Build and execute Command
     // HEXISTS list key
     // src: http://redis.io/commands/hexists
     QByteArray returnValue;
-    RedisMapPrivate::execRedisCommand({ "HEXISTS", this->redisList, key }, &returnValue);
+    RedisInterface::execRedisCommand({ "HEXISTS", this->redisList, key }, &returnValue);
 
     // return result
     return returnValue == "1";
 }
 
-bool RedisMapPrivate::exists()
+bool RedisInterface::exists()
 {
     // Build and execute Command
     // EXISTS list
     // src: http://redis.io/commands/exists
     QByteArray returnValue;
-    RedisMapPrivate::execRedisCommand({ "EXISTS", this->redisList }, &returnValue);
+    RedisInterface::execRedisCommand({ "EXISTS", this->redisList }, &returnValue);
 
     // return result
     return returnValue == "1";
 }
 
-bool RedisMapPrivate::remove(QByteArray key, bool waitForAnswer)
+bool RedisInterface::remove(QByteArray key, bool waitForAnswer)
 {
     // Build and execute Command
     // HDEL list key
     // src: http://redis.io/commands/hdel
     QByteArray returnValue;
-    RedisMapPrivate::execRedisCommand({ "HDEL", this->redisList, key}, waitForAnswer ? &returnValue : 0);
+    RedisInterface::execRedisCommand({ "HDEL", this->redisList, key}, waitForAnswer ? &returnValue : 0);
 
     // return result
     return waitForAnswer ? returnValue == "1" : true;
 }
 
-QByteArray RedisMapPrivate::value(QByteArray key)
+QByteArray RedisInterface::value(QByteArray key)
 {
     // Build and execute Command
     // HGET list key
     // src: http://redis.io/commands/hget
     QByteArray returnValue;
-    RedisMapPrivate::execRedisCommand({ "HGET", this->redisList, key }, &returnValue);
+    RedisInterface::execRedisCommand({ "HGET", this->redisList, key }, &returnValue);
 
     // return result
     return returnValue;
 }
 
-void RedisMapPrivate::fetchKeys(QList<QByteArray>* data, int count, int pos, int* newPos)
+void RedisInterface::fetchKeys(QList<QByteArray>* data, int count, int pos, int* newPos)
 {
     // exit if we have no data to store
     if(!data) return;
 
     // if the caller want all keys, we are using HKEYS
-    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HKEYS", this->redisList }, 0, data);
+    if(count <= 0) RedisInterface::execRedisCommand({ "HKEYS", this->redisList }, 0, data);
 
     // otherwise we iterate over the keys using SCAN
     else this->simplifyHScan(data, count, pos, true, false, newPos);
 }
 
-void RedisMapPrivate::fetchValues(QList<QByteArray>* data, int count, int pos, int* newPos)
+void RedisInterface::fetchValues(QList<QByteArray>* data, int count, int pos, int* newPos)
 {
     // exit if we have no data to store
     if(!data) return;
 
     // if the caller want all keys, we are using HVALS
-    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HVALS", this->redisList }, 0, data);
+    if(count <= 0) RedisInterface::execRedisCommand({ "HVALS", this->redisList }, 0, data);
 
     // otherwise we iterate over the keys using SCAN
     else this->simplifyHScan(data, count, pos, false, true, newPos);
 }
 
-void RedisMapPrivate::fetchAll(QList<QByteArray>* data, int count, int pos, int *newPos)
+void RedisInterface::fetchAll(QList<QByteArray>* data, int count, int pos, int *newPos)
 {
     // exit if we have no data to store
     if(!data) return;
 
     // if the caller want all keys, we are using HGETALL
-    if(count <= 0) RedisMapPrivate::execRedisCommand({ "HGETALL", this->redisList }, 0, data);
+    if(count <= 0) RedisInterface::execRedisCommand({ "HGETALL", this->redisList }, 0, data);
 
     // otherwise we iterate over the keys using SCAN
     else this->simplifyHScan(data, count, pos, true, true, newPos);
 }
 
-bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
+bool RedisInterface::execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
 {
     // acquire socket
     bool waitForAnswer = result || lstResultArray1 || lstResultArray2;
@@ -275,7 +275,7 @@ bool RedisMapPrivate::execRedisCommand(std::initializer_list<QByteArray> cmd, QB
 }
 
 
-void RedisMapPrivate::simplifyHScan(QList<QByteArray>* data, int count, int pos, bool key, bool value, int *newPos)
+void RedisInterface::simplifyHScan(QList<QByteArray>* data, int count, int pos, bool key, bool value, int *newPos)
 {
     // if caller don't want a key or a value return an empty list
     if(!data || (!key && !value)) return;
@@ -285,7 +285,7 @@ void RedisMapPrivate::simplifyHScan(QList<QByteArray>* data, int count, int pos,
     // src: http://redis.io/commands/scan
     QList<QByteArray> type;
     QList<QByteArray> elements;
-    if(RedisMapPrivate::execRedisCommand({"HSCAN", this->redisList, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, &type, &elements)) {
+    if(RedisInterface::execRedisCommand({"HSCAN", this->redisList, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, &type, &elements)) {
         // set new pos if wanted
         if(newPos && !type.isEmpty()) *newPos = atoi(type.first().data());
 
