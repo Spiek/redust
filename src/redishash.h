@@ -45,6 +45,13 @@ class RedisHash
             {
                 return this->forward(elements);
             }
+            iterator erase(bool waitForAnswer = true)
+            {
+                iterator itr = *this;
+                if(itr.currentKey.isEmpty()) return *this;
+                itr.d->hdel(itr.currentKey, waitForAnswer);
+                return itr.forward(1);
+            }
 
             // copy operator overloadings
             iterator operator +(int elements)
@@ -187,6 +194,11 @@ class RedisHash
         iterator end(int cacheSize = 100)
         {
             return iterator(this->d, -1, cacheSize);
+        }
+
+        iterator erase(iterator pos, bool waitForAnswer = true)
+        {
+            return pos.erase(waitForAnswer);
         }
 
         void clear(bool async = true)
