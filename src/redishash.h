@@ -3,7 +3,7 @@
 
 // redis
 #include "redisvalue.h"
-#include "redismapprivate.h"
+#include "redisinterface.h"
 
 template< typename Key, typename Value >
 class RedisHash
@@ -87,7 +87,7 @@ class RedisHash
             }
 
         private:
-            iterator(RedisMapPrivate* prmap, int pos, int cacheSize)
+            iterator(RedisInterface* prmap, int pos, int cacheSize)
             {
                 this->d = prmap;
                 this->pos = pos;
@@ -129,7 +129,7 @@ class RedisHash
                 if(this->posRedis == -1) this->posRedis = 0;
 
                 // refill queue
-                this->d->simplifyHScan(&this->queueElements, this->cacheSize, this->posRedis, true, true, &this->posRedis);
+                this->d->scan(this->queueElements, this->cacheSize, this->posRedis, &this->posRedis);
 
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
@@ -153,7 +153,7 @@ class RedisHash
             }
 
             // data
-            RedisMapPrivate* d;
+            RedisInterface* d;
             int cacheSize;
             int posRedis = -1;
             int pos;
@@ -171,7 +171,7 @@ class RedisHash
     public:
         RedisHash(QString list, QString connectionName = "redis")
         {
-            this->d = new RedisMapPrivate(list, connectionName);
+            this->d = new RedisInterface(list, connectionName);
         }
 
         ~RedisHash()
@@ -191,12 +191,12 @@ class RedisHash
 
         void clear(bool async = true)
         {
-            return this->d->clear(async);
+            return this->d->del(async);
         }
 
         int count()
         {
-            return this->d->count();
+            return this->d->hlen();
         }
 
         bool empty()
@@ -206,12 +206,12 @@ class RedisHash
 
         bool isEmpty()
         {
-            return !this->d->count();
+            return !this->d->hlen();
         }
 
         bool exists(Key key)
         {
-            return this->d->contains(RedisValue<Key>::serialize(key));
+            return this->d->hexists(RedisValue<Key>::serialize(key));
         }
 
         bool exists()
@@ -221,7 +221,7 @@ class RedisHash
 
         bool remove(Key key, bool waitForAnswer = true)
         {
-            return this->d->remove(RedisValue<Key>::serialize(key), waitForAnswer);
+            return this->d->hdel(RedisValue<Key>::serialize(key), waitForAnswer);
         }
 
         NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
@@ -234,13 +234,13 @@ class RedisHash
 
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
-            return this->d->insert(RedisValue<Key>::serialize(key),
+            return this->d->hset(RedisValue<Key>::serialize(key),
                                    RedisValue<Value>::serialize(value), waitForAnswer);
         }
 
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(this->d->value(RedisValue<Key>::serialize(key)));
+            return RedisValue<Value>::deserialize(this->d->hget(RedisValue<Key>::serialize(key)));
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
@@ -248,15 +248,18 @@ class RedisHash
             // create result data list
             QList<NORM2VALUE(Key)> list;
 
-            // fetch first result
-            int pos = 0;
+            // if fetch chunk size is smaller or equal 0, so exec hkeys
             QList<QByteArray> elements;
-            this->d->fetchKeys(&elements, fetchChunkSize, pos, &pos);
+            if(fetchChunkSize <= 0) this->d->hkeys(elements);
 
-            // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchKeys(&elements, fetchChunkSize, pos, &pos);
+            // otherwise get keys using scan
+            else {
+                int pos = 0;
+                do this->d->scan(&elements, 0, fetchChunkSize, pos, &pos);
+                while(pos);
+            }
 
-            // deserialize the data
+            // deserialize byte array data to Key Type
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
                 list.append(RedisValue<Key>::deserialize(*itr));
             }
@@ -270,17 +273,20 @@ class RedisHash
             // create result data list
             QList<NORM2VALUE(Value)> list;
 
-            // fetch first result
-            int pos = 0;
+            // if fetch chunk size is smaller or equal 0, so exec hvals
             QList<QByteArray> elements;
-            this->d->fetchValues(&elements, fetchChunkSize, pos, &pos);
+            if(fetchChunkSize <= 0) this->d->hvals(elements);
 
-            // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchValues(&elements, fetchChunkSize, pos, &pos);
+            // otherwise get values using scan
+            else {
+                int pos = 0;
+                do this->d->scan(0, &elements, fetchChunkSize, pos, &pos);
+                while(pos);
+            }
 
-            // deserialize the data
+            // deserialize byte array data to Value Type
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
-                list.append(RedisValue<Key>::deserialize(*itr));
+                list.append(RedisValue<Value>::deserialize(*itr));
             }
 
             // return list
@@ -292,13 +298,16 @@ class RedisHash
             // create result data list
             QMap<NORM2VALUE(Key),NORM2VALUE(Value)> map;
 
-            // fetch first result
-            int pos = 0;
+            // if fetch chunk size is smaller or equal 0, so exec hgetall
             QList<QByteArray> elements;
-            this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+            if(fetchChunkSize <= 0) this->d->hgetall(elements);
 
-            // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+            // otherwise get key values using scan
+            else {
+                int pos = 0;
+                do this->d->scan(elements, fetchChunkSize, pos, &pos);
+                while(pos);
+            }
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
@@ -314,13 +323,16 @@ class RedisHash
             // create result data list
             QHash<NORM2VALUE(Key),NORM2VALUE(Value)> hash;
 
-            // fetch first result
-            int pos = 0;
+            // if fetch chunk size is smaller or equal 0, so exec hgetall
             QList<QByteArray> elements;
-            this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+            if(fetchChunkSize <= 0) this->d->hgetall(elements);
 
-            // if caller want to select data in chunks so do it
-            if(fetchChunkSize > 0) while(pos != 0) this->d->fetchAll(&elements, fetchChunkSize, pos, &pos);
+            // otherwise get key values using scan
+            else {
+                int pos = 0;
+                do this->d->scan(elements, fetchChunkSize, pos, &pos);
+                while(pos);
+            }
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
@@ -332,7 +344,7 @@ class RedisHash
         }
 
     private:
-        RedisMapPrivate* d;
+        RedisInterface* d;
 };
 
 
