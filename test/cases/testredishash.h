@@ -1,0 +1,5 @@
+#ifndef TESTREDISHASH_H
+#define TESTREDISHASH_H
+
+
+#endif // TESTREDISHASH_H
