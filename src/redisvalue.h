@@ -51,7 +51,13 @@ class RedisValue
             if(!value) return QByteArray();
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
                 NORM2VALUE(T) t = sizeof(NORM2VALUE(T)) == 1 ? *value : qToBigEndian<NORM2VALUE(T)>(*value);
-                return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
+
+                // remove all leading \0-chars from value (except last char!), to save some extra space in redis
+                // Note: we can do that, because we are serialize integral type to bigEndian and so the starting \0-chars can be ignored!
+                char* data = (char*)(void*)&t;
+                while((std::size_t)(data - (char*)(void*)&t) < sizeof(NORM2VALUE(T)) - 1 && !*data) data++;
+
+                return QByteArray(data, sizeof(NORM2VALUE(T)) - (data - (char*)(void*)&t));
             } else return QVariant(*value).value<QByteArray>();
         }
         static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::serialize(&value, binarize); }
@@ -59,7 +65,9 @@ class RedisValue
             NORM2VALUE(T) t;
             if(!value) return t;
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
-                memcpy(&t, value->data(), sizeof(NORM2VALUE(T)));
+                // copy available data to end of t (this reverts the byte saving in serialisation)
+                t = 0;
+                memcpy((char*)&t + qMax((size_t)0, sizeof(NORM2VALUE(T)) - value->length()), value->data(), qMin(sizeof(NORM2VALUE(T)), (size_t)value->length()));
                 if(sizeof(NORM2VALUE(T)) > 1) t = qFromBigEndian<T>(t);
             } else t = QVariant(*value).value<NORM2VALUE(T)>();
             return t;
