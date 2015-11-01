@@ -49,7 +49,7 @@ class RedisValue
     public:
         static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
             if(!value) return QByteArray();
-            if(binarize && std::is_arithmetic<NORM2VALUE(T)>::value) {
+            if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
                 NORM2VALUE(T) t = qToBigEndian<NORM2VALUE(T)>(*value);
                 return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
             } else return QVariant(*value).value<QByteArray>();
@@ -58,7 +58,7 @@ class RedisValue
         static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             NORM2VALUE(T) t;
             if(!value) return t;
-            if(binarize && std::is_arithmetic<NORM2VALUE(T)>::value) {
+            if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
                 memcpy(&t, value->data(), sizeof(NORM2VALUE(T)));
                 t = qFromBigEndian<T>(t);
             } else t = QVariant(*value).value<NORM2VALUE(T)>();
