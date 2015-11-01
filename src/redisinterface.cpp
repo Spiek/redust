@@ -11,13 +11,16 @@ RedisInterface::RedisInterface(QString list, QString connectionName)
 // Key-Value Redis Functions
 //
 
-void RedisInterface::del(bool async)
+bool RedisInterface::del(bool async)
 {
     // Build and execute Command
-    // We use DEL command to delete the whole HASH list
+    // DEL List
     // src: http://redis.io/commands/del
     QByteArray res;
-    RedisInterface::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
+    bool result = RedisInterface::execRedisCommand({"DEL", this->redisList }, async ? 0 : &res);
+
+    if(async) return result;
+    else return result && res.toInt() == 1;
 }
 
 bool RedisInterface::exists()
@@ -53,11 +56,7 @@ bool RedisInterface::hset(QByteArray key, QByteArray value, bool waitForAnswer)
     // HSET list key value
     // src: http://redis.io/commands/hset
     QByteArray returnValue;
-    bool result = RedisInterface::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
-
-    // determinate result
-    if(!waitForAnswer) return result;
-    else return result && returnValue == "OK";
+    return RedisInterface::execRedisCommand({ "HSET", this->redisList, key, value }, waitForAnswer ? &returnValue : 0);
 }
 
 bool RedisInterface::hexists(QByteArray key)

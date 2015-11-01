@@ -15,7 +15,7 @@ class RedisInterface
         RedisInterface(QString list, QString connectionName = "redis");
 
         // Key-Value Redis Functions
-        void del(bool async = true);
+        bool del(bool async = true);
         bool exists();
 
         // Hash Redis Functions

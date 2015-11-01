@@ -201,7 +201,7 @@ class RedisHash
             return pos.erase(waitForAnswer);
         }
 
-        void clear(bool async = true)
+        bool clear(bool async = true)
         {
             return this->d->del(async);
         }
