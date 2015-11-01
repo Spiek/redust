@@ -19,6 +19,8 @@ class RedisHash
                 this->posRedis = other.posRedis;
                 this->cacheSize = other.cacheSize;
                 this->queueElements = other.queueElements;
+                this->binarizeKey = other.binarizeKey;
+                this->binarizeValue = other.binarizeValue;
 
                 // copy key data
                 this->currentKey = other.currentKey;
@@ -94,11 +96,13 @@ class RedisHash
             }
 
         private:
-            iterator(RedisInterface* prmap, int pos, int cacheSize)
+            iterator(RedisInterface* prmap, int pos, int cacheSize, bool binarizeKey, bool binarizeValue)
             {
                 this->d = prmap;
                 this->pos = pos;
                 this->cacheSize = cacheSize;
+                this->binarizeKey = binarizeKey;
+                this->binarizeValue = binarizeValue;
                 if(pos >= 0) this->forward(1);
             }
 
@@ -148,13 +152,13 @@ class RedisHash
             {
                 // load key (if not allready happened)
                 if(key && !this->keyLoaded) {
-                    this->currentKeyVal = RedisValue<Key>::deserialize(this->currentKey);
+                    this->currentKeyVal = RedisValue<Key>::deserialize(this->currentKey, this->binarizeKey);
                     this->keyLoaded = true;
                 }
 
                 // load value (if not allready happened)
                 if(value && !this->valueLoaded) {
-                    this->currentValueVal = RedisValue<Value>::deserialize(this->currentValue);
+                    this->currentValueVal = RedisValue<Value>::deserialize(this->currentValue, this->binarizeValue);
                     this->valueLoaded = true;
                 }
             }
@@ -171,13 +175,17 @@ class RedisHash
             NORM2VALUE(Value) currentValueVal;
             bool keyLoaded = false;
             bool valueLoaded = false;
+            bool binarizeKey = false;
+            bool binarizeValue = false;
 
         friend class RedisHash;
     };
 
     public:
-        RedisHash(QString list, QString connectionName = "redis")
+        RedisHash(QString list, bool binarizeKey = false, bool binarizeValue = false, QString connectionName = "redis")
         {
+            this->binarizeKey = binarizeKey;
+            this->binarizeValue = binarizeValue;
             this->d = new RedisInterface(list, connectionName);
         }
 
@@ -188,12 +196,12 @@ class RedisHash
 
         iterator begin(int cacheSize = 100)
         {
-            return iterator(this->d, 0, cacheSize);
+            return iterator(this->d, 0, cacheSize, this->binarizeKey, this->binarizeValue);
         }
 
         iterator end(int cacheSize = 100)
         {
-            return iterator(this->d, -1, cacheSize);
+            return iterator(this->d, -1, cacheSize, this->binarizeKey, this->binarizeValue);
         }
 
         iterator erase(iterator pos, bool waitForAnswer = true)
@@ -223,7 +231,7 @@ class RedisHash
 
         bool exists(Key key)
         {
-            return this->d->hexists(RedisValue<Key>::serialize(key));
+            return this->d->hexists(RedisValue<Key>::serialize(key, this->binarizeKey));
         }
 
         bool exists()
@@ -233,7 +241,7 @@ class RedisHash
 
         bool remove(Key key, bool waitForAnswer = true)
         {
-            return this->d->hdel(RedisValue<Key>::serialize(key), waitForAnswer);
+            return this->d->hdel(RedisValue<Key>::serialize(key, this->binarizeKey), waitForAnswer);
         }
 
         NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
@@ -246,13 +254,13 @@ class RedisHash
 
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
-            return this->d->hset(RedisValue<Key>::serialize(key),
-                                   RedisValue<Value>::serialize(value), waitForAnswer);
+            return this->d->hset(RedisValue<Key>::serialize(key, this->binarizeKey),
+                                   RedisValue<Value>::serialize(value, this->binarizeValue), waitForAnswer);
         }
 
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(this->d->hget(RedisValue<Key>::serialize(key)));
+            return RedisValue<Value>::deserialize(this->d->hget(RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue);
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
@@ -273,7 +281,7 @@ class RedisHash
 
             // deserialize byte array data to Key Type
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
-                list.append(RedisValue<Key>::deserialize(*itr));
+                list.append(RedisValue<Key>::deserialize(*itr, this->binarizeKey));
             }
 
             // return list
@@ -298,7 +306,7 @@ class RedisHash
 
             // deserialize byte array data to Value Type
             for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
-                list.append(RedisValue<Value>::deserialize(*itr));
+                list.append(RedisValue<Value>::deserialize(*itr, this->binarizeValue));
             }
 
             // return list
@@ -323,7 +331,7 @@ class RedisHash
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
-                map.insert(RedisValue<Key>::deserialize(*itr), RedisValue<Value>::deserialize(*(itr + 1)));
+                map.insert(RedisValue<Key>::deserialize(*itr, this->binarizeKey), RedisValue<Value>::deserialize(*(itr + 1), this->binarizeValue));
             }
 
             // return map
@@ -348,7 +356,7 @@ class RedisHash
 
             // deserialize the data
             for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
-                hash.insert(RedisValue<Key>::deserialize(*itr), RedisValue<Value>::deserialize(*(itr + 1)));
+                hash.insert(RedisValue<Key>::deserialize(*itr, this->binarizeKey), RedisValue<Value>::deserialize(*(itr + 1), this->binarizeValue));
             }
 
             // return hash
@@ -357,6 +365,8 @@ class RedisHash
 
     private:
         RedisInterface* d;
+        bool binarizeKey;
+        bool binarizeValue;
 };
 
 

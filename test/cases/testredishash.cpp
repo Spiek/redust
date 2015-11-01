@@ -17,8 +17,8 @@ class TestTemplateHelper
                 qDebug("Insert %i Random values into RedisHash<%s,%s>(\"%s\") (%s)", randomValuesCount, typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
                 RedisHash<Key, Value> rHash(strHash);
                 for(int i = 1; i <= randomValuesCount; i++) {
-                    Key key = RedisValue<Key>::deserialize(QString::number(i).toLocal8Bit());
-                    Value value = RedisValue<Value>::deserialize(QString::number(i + qrand()).toLocal8Bit());
+                    Key key = RedisValue<Key>::deserialize(QString::number(i).toLocal8Bit(), true);
+                    Value value = RedisValue<Value>::deserialize(QString::number(i + qrand()).toLocal8Bit(), false);
                     if(!rHash.insert(key, value, run)) {
                         QString strLogMessage = QString("Failed to insert %1 into %2 (Key,Value):%3,%4").arg(strMode, strHash).arg(i).arg(value);
                         QFAIL(qPrintable(strLogMessage));

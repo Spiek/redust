@@ -37,50 +37,34 @@ template< typename T>
 struct ValueRefType<T*>
 {  typedef typename std::remove_pointer<T>::type type; };
 
-
 // Type normalisations helper macros
 #define NORM2VALUE(T) typename ValueType<T>::type
 #define NORM2REFORVALUE(T) typename ValueRefType<T>::type
 #define NORM2POINTER(T) typename ValueType<T>::type*
 
-/* Parser for QVariant types */
+/* Parser for QVariant and arithmetic types */
 template< typename T, typename Enable = void >
 class RedisValue
 {
     public:
-        static inline QByteArray serialize(NORM2VALUE(T)* value) { return value ? QVariant(*value).value<QByteArray>() : QByteArray(); }
-        static inline QByteArray serialize(NORM2REFORVALUE(T)  value) { return QVariant(value).value<QByteArray>(); }
-        static inline NORM2VALUE(T) deserialize(QByteArray* value) { return value ? QVariant(*value).value<NORM2VALUE(T)>() : NORM2VALUE(T)(); }
-        static inline NORM2VALUE(T) deserialize(QByteArray  value) { return QVariant(value).value<NORM2VALUE(T)>(); }
-};
-
-/* Parser for arithmetic types */
-template<typename T>
-class RedisValue<T, typename std::enable_if<std::is_arithmetic<NORM2VALUE(T)>::value>::type >
-{
-    public:
-        static inline QByteArray serialize(NORM2VALUE(T)* value) {
+        static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
             if(!value) return QByteArray();
-            NORM2VALUE(T) t = qToBigEndian<NORM2VALUE(T)>(*value);
-            return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
+            if(binarize && std::is_arithmetic<NORM2VALUE(T)>::value) {
+                NORM2VALUE(T) t = qToBigEndian<NORM2VALUE(T)>(*value);
+                return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
+            } else return QVariant(*value).value<QByteArray>();
         }
-        static inline QByteArray serialize(NORM2REFORVALUE(T) value) {
-            NORM2VALUE(T) t = qToBigEndian<NORM2VALUE(T)>(value);
-            return QByteArray((char*)(void*)&t, sizeof(NORM2VALUE(T)));
-        }
-        static inline NORM2VALUE(T) deserialize(QByteArray* value) {
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::serialize(&value, binarize); }
+        static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             NORM2VALUE(T) t;
             if(!value) return t;
-            memcpy(&t, value->data(), sizeof(NORM2VALUE(T)));
-            t = qFromBigEndian<T>(t);
+            if(binarize && std::is_arithmetic<NORM2VALUE(T)>::value) {
+                memcpy(&t, value->data(), sizeof(NORM2VALUE(T)));
+                t = qFromBigEndian<T>(t);
+            } else t = QVariant(*value).value<NORM2VALUE(T)>();
             return t;
         }
-        static inline NORM2VALUE(T) deserialize(QByteArray value) {
-            NORM2VALUE(T) t;
-            memcpy(&t, value.data(), sizeof(NORM2VALUE(T)));
-            t = qFromBigEndian<T>(t);
-            return t;
-        }
+        static inline NORM2VALUE(T) deserialize(QByteArray  value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
 };
 
 #ifdef REDISMAP_SUPPORT_PROTOBUF
@@ -90,30 +74,23 @@ template<typename T>
 class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, NORM2VALUE(T)>::value>::type >
 {
     public:
-        static inline QByteArray serialize(NORM2VALUE(T)* value) {
-            if(!value) return QByteArray();
+        static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
+            Q_UNUSED(binarize);
             QByteArray data;
+            if(!value) return data;
             data.resize(value->ByteSize());
             value->SerializeToArray(data.data(), value->ByteSize());
             return data;
         }
-        static inline QByteArray serialize(NORM2REFORVALUE(T) value) {
-            QByteArray data;
-            data.resize(value.ByteSize());
-            value.SerializeToArray(data.data(), value.ByteSize());
-            return data;
-        }
-        static inline NORM2VALUE(T) deserialize(QByteArray* value) {
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
+        static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
+            Q_UNUSED(binarize);
             NORM2VALUE(T) t;
             if(!value) return t;
             if(!value->isEmpty()) t.ParseFromArray(value->data(), value->length());
             return t;
         }
-        static inline NORM2VALUE(T) deserialize(QByteArray value) {
-            NORM2VALUE(T) t;
-            if(!value.isEmpty()) t.ParseFromArray(value.data(), value.length());
-            return t;
-        }
+        static inline NORM2VALUE(T) deserialize(QByteArray value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
 };
 #endif
 
