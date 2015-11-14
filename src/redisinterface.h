@@ -15,6 +15,7 @@ class RedisInterface
         // Key-Value Redis Functions
         static bool del(QByteArray key, bool async = true, QString connectionPool = "redis");
         static bool exists(QByteArray key, QString connectionPool = "redis");
+        static QList<QByteArray> keys(QByteArray pattern = "*", QString connectionPool = "redis");
 
         // Hash Redis Functions
         static int hlen(QByteArray list, QString connectionPool = "redis");

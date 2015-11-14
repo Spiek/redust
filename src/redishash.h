@@ -1,6 +1,10 @@
 #ifndef REDISMAP_H
 #define REDISMAP_H
 
+// core
+#include <QByteArray>
+#include <QString>
+
 // redis
 #include "redisvalue.h"
 #include "redisinterface.h"
@@ -264,7 +268,7 @@ class RedisHash
 
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(RedisInterface::hget(this->list, RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue, this->connectionPool);
+            return RedisValue<Value>::deserialize(RedisInterface::hget(this->list, RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue);
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)

@@ -28,6 +28,15 @@ bool RedisInterface::exists(QByteArray key, QString connectionPool)
     return returnValue == "1";
 }
 
+QList<QByteArray> RedisInterface::keys(QByteArray pattern, QString connectionPool)
+{
+    // Build and execute Command
+    // KEYS pattern
+    // src: http://redis.io/commands/KEYS
+    QList<QByteArray> keys;
+    RedisInterface::execRedisCommand({ "KEYS", pattern }, connectionPool, 0, &keys);
+    return keys;
+}
 
 //
 // Hash Redis Functions
