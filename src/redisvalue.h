@@ -54,6 +54,7 @@ class RedisValue
 
                 // remove all leading \0-chars from value (except last char!), to save some extra space in redis
                 // Note: we can do that, because we are serialize integral type to bigEndian and so the starting \0-chars can be ignored!
+                // Example: big endian data (for an int16) 00FF (Hex) -becomes-> FF (Hex)
                 char* data = (char*)(void*)&t;
                 while((std::size_t)(data - (char*)(void*)&t) < sizeof(NORM2VALUE(T)) - 1 && !*data) data++;
 
@@ -65,8 +66,9 @@ class RedisValue
             NORM2VALUE(T) t;
             if(!value) return t;
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
-                // copy available data to end of t (this reverts the byte saving in serialisation)
-                t = 0;
+                // copy available data to end of t and set all data before to \0 (this reverts the byte saving in serialisation)
+                // Example: big endian data (for an int16) FF (Hex) -becomes-> 00FF (Hex)
+                memset((char*)&t, 0, sizeof(NORM2VALUE(T)) - value->length());
                 memcpy((char*)&t + qMax((size_t)0, sizeof(NORM2VALUE(T)) - value->length()), value->data(), qMin(sizeof(NORM2VALUE(T)), (size_t)value->length()));
                 if(sizeof(NORM2VALUE(T)) > 1) t = qFromBigEndian<T>(t);
             } else t = QVariant(*value).value<NORM2VALUE(T)>();
