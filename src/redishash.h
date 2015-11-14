@@ -14,7 +14,8 @@ class RedisHash
             // self operator overloadings
             iterator& operator =(iterator other)
             {
-                this->d = other.d;
+                this->list = other.list;
+                this->connectionPool = other.connectionPool;
                 this->pos = other.pos;
                 this->posRedis = other.posRedis;
                 this->cacheSize = other.cacheSize;
@@ -96,10 +97,10 @@ class RedisHash
             }
 
         private:
-            iterator(RedisInterface* prmap, int pos, int cacheSize, bool binarizeKey, bool binarizeValue)
+            iterator(QByteArray list, int pos, int cacheSize, bool binarizeKey, bool binarizeValue, QString connectionPool = "redis")
             {
-                this->d = prmap;
-                this->pos = pos;
+                this->list = list;
+                this->connectionPool = connectionPool;
                 this->cacheSize = cacheSize;
                 this->binarizeKey = binarizeKey;
                 this->binarizeValue = binarizeValue;
@@ -140,7 +141,7 @@ class RedisHash
                 if(this->posRedis == -1) this->posRedis = 0;
 
                 // refill queue
-                this->d->scan(this->queueElements, this->cacheSize, this->posRedis, &this->posRedis);
+                RedisInterface::scan(this->list, this->queueElements, this->cacheSize, this->posRedis, &this->posRedis, this->connectionPool);
 
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
@@ -177,31 +178,34 @@ class RedisHash
             bool valueLoaded = false;
             bool binarizeKey = false;
             bool binarizeValue = false;
+            QByteArray list;
+            QString connectionPool;
 
         friend class RedisHash;
     };
 
     public:
-        RedisHash(QString list, bool binarizeKey = false, bool binarizeValue = false, QString connectionName = "redis")
+        RedisHash(QByteArray list, bool binarizeKey = false, bool binarizeValue = false, QString connectionPool = "redis")
         {
             this->binarizeKey = binarizeKey;
             this->binarizeValue = binarizeValue;
-            this->d = new RedisInterface(list, connectionName);
+            this->list = list;
+            this->connectionPool = connectionPool;
         }
 
         ~RedisHash()
         {
-            delete this->d;
+
         }
 
         iterator begin(int cacheSize = 100)
         {
-            return iterator(this->d, 0, cacheSize, this->binarizeKey, this->binarizeValue);
+            return iterator(this->list, 0, cacheSize, this->binarizeKey, this->binarizeValue, this->connectionPool);
         }
 
         iterator end(int cacheSize = 100)
         {
-            return iterator(this->d, -1, cacheSize, this->binarizeKey, this->binarizeValue);
+            return iterator(this->list, -1, cacheSize, this->binarizeKey, this->binarizeValue, this->connectionPool);
         }
 
         iterator erase(iterator pos, bool waitForAnswer = true)
@@ -211,12 +215,12 @@ class RedisHash
 
         bool clear(bool async = true)
         {
-            return this->d->del(async);
+            return RedisInterface::del(this->list, async, this->connectionPool);
         }
 
         int count()
         {
-            return this->d->hlen();
+            return RedisInterface::hlen(this->list, this->connectionPool);
         }
 
         bool empty()
@@ -226,22 +230,22 @@ class RedisHash
 
         bool isEmpty()
         {
-            return !this->d->hlen();
+            return !RedisInterface::hlen(this->list, this->connectionPool);
         }
 
         bool exists(Key key)
         {
-            return this->d->hexists(RedisValue<Key>::serialize(key, this->binarizeKey));
+            return RedisInterface::hexists(this->list, RedisValue<Key>::serialize(key, this->binarizeKey), this->connectionPool);
         }
 
         bool exists()
         {
-            return this->d->exists();
+            return RedisInterface::exists(this->list, this->connectionPool);
         }
 
         bool remove(Key key, bool waitForAnswer = true)
         {
-            return this->d->hdel(RedisValue<Key>::serialize(key, this->binarizeKey), waitForAnswer);
+            return RedisInterface::hdel(this->list, RedisValue<Key>::serialize(key, this->binarizeKey), waitForAnswer, this->connectionPool);
         }
 
         NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
@@ -254,13 +258,13 @@ class RedisHash
 
         bool insert(Key key, Value value, bool waitForAnswer = false)
         {
-            return this->d->hset(RedisValue<Key>::serialize(key, this->binarizeKey),
-                                   RedisValue<Value>::serialize(value, this->binarizeValue), waitForAnswer);
+            return RedisInterface::hset(this->list, RedisValue<Key>::serialize(key, this->binarizeKey),
+                                   RedisValue<Value>::serialize(value, this->binarizeValue), waitForAnswer, this->connectionPool);
         }
 
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(this->d->hget(RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue);
+            return RedisValue<Value>::deserialize(RedisInterface::hget(this->list, RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue, this->connectionPool);
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
@@ -270,12 +274,12 @@ class RedisHash
 
             // if fetch chunk size is smaller or equal 0, so exec hkeys
             QList<QByteArray> elements;
-            if(fetchChunkSize <= 0) this->d->hkeys(elements);
+            if(fetchChunkSize <= 0) RedisInterface::hkeys(this->list, elements, this->connectionPool);
 
             // otherwise get keys using scan
             else {
                 int pos = 0;
-                do this->d->scan(&elements, 0, fetchChunkSize, pos, &pos);
+                do RedisInterface::scan(this->list, &elements, 0, fetchChunkSize, pos, &pos, this->connectionPool);
                 while(pos);
             }
 
@@ -295,12 +299,12 @@ class RedisHash
 
             // if fetch chunk size is smaller or equal 0, so exec hvals
             QList<QByteArray> elements;
-            if(fetchChunkSize <= 0) this->d->hvals(elements);
+            if(fetchChunkSize <= 0) RedisInterface::hvals(this->list, elements, this->connectionPool);
 
             // otherwise get values using scan
             else {
                 int pos = 0;
-                do this->d->scan(0, &elements, fetchChunkSize, pos, &pos);
+                do RedisInterface::scan(this->list, 0, &elements, fetchChunkSize, pos, &pos, this->connectionPool);
                 while(pos);
             }
 
@@ -320,12 +324,12 @@ class RedisHash
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
             QList<QByteArray> elements;
-            if(fetchChunkSize <= 0) this->d->hgetall(elements);
+            if(fetchChunkSize <= 0) RedisInterface::hgetall(this->list, elements, this->connectionPool);
 
             // otherwise get key values using scan
             else {
                 int pos = 0;
-                do this->d->scan(elements, fetchChunkSize, pos, &pos);
+                do RedisInterface::scan(this->list, elements, fetchChunkSize, pos, &pos, this->connectionPool);
                 while(pos);
             }
 
@@ -345,12 +349,12 @@ class RedisHash
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
             QList<QByteArray> elements;
-            if(fetchChunkSize <= 0) this->d->hgetall(elements);
+            if(fetchChunkSize <= 0) RedisInterface::hgetall(this->list, elements, this->connectionPool);
 
             // otherwise get key values using scan
             else {
                 int pos = 0;
-                do this->d->scan(elements, fetchChunkSize, pos, &pos);
+                do RedisInterface::scan(this->list, elements, fetchChunkSize, pos, &pos, this->connectionPool);
                 while(pos);
             }
 
@@ -364,9 +368,10 @@ class RedisHash
         }
 
     private:
-        RedisInterface* d;
         bool binarizeKey;
         bool binarizeValue;
+        QByteArray list;
+        QString connectionPool;
 };
 
 

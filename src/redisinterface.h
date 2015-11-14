@@ -12,39 +12,33 @@
 class RedisInterface
 {
     public:
-        RedisInterface(QString list, QString connectionName = "redis");
-
         // Key-Value Redis Functions
-        bool del(bool async = true);
-        bool exists();
+        static bool del(QByteArray key, bool async = true, QString connectionPool = "redis");
+        static bool exists(QByteArray key, QString connectionPool = "redis");
 
         // Hash Redis Functions
-        int hlen();
-        bool hset(QByteArray key, QByteArray value, bool waitForAnswer = false);
-        bool hexists(QByteArray key);
-        bool hdel(QByteArray key, bool waitForAnswer = true);
-        QByteArray hget(QByteArray key);
-        void hkeys(QList<QByteArray>& result);
-        void hvals(QList<QByteArray>& result);
-        void hgetall(QList<QByteArray>& result);
-        void hgetall(QMap<QByteArray, QByteArray>& keyValues);
-        void hgetall(QHash<QByteArray, QByteArray>& keyValues);
+        static int hlen(QByteArray list, QString connectionPool = "redis");
+        static bool hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer = false, QString connectionPool = "redis");
+        static bool hexists(QByteArray list, QByteArray key, QString connectionPool = "redis");
+        static bool hdel(QByteArray list, QByteArray key, bool waitForAnswer = true, QString connectionPool = "redis");
+        static QByteArray hget(QByteArray list, QByteArray key, QString connectionPool = "redis");
+        static void hkeys(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
+        static void hvals(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
+        static void hgetall(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
+        static void hgetall(QByteArray list, QMap<QByteArray, QByteArray>& keyValues, QString connectionPool = "redis");
+        static void hgetall(QByteArray list, QHash<QByteArray, QByteArray>& keyValues, QString connectionPool = "redis");
 
         // Scan Redis Functions
-        void scan(QList<QByteArray>* keys, QList<QByteArray>* values, int count = 100, int pos = 0, int *newPos = 0);
-        void scan(QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
-        void scan(QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
+        static void scan(QByteArray list, QList<QByteArray>* keys, QList<QByteArray>* values, int count = 100, int pos = 0, int *newPos = 0, QString connectionPool = "redis");
+        static void scan(QByteArray list, QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0, QString connectionPool = "redis");
+        static void scan(QByteArray list, QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0, QString connectionPool = "redis");
 
     private:
         // command simplifier
-        void simplifyHScan(QList<QByteArray> *lstKeyValues, QList<QByteArray> *keys, QList<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos);
+        static void simplifyHScan(QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray> *keys, QList<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos, QString connectionPool = "redis");
 
         // helper
-        bool execRedisCommand(std::initializer_list<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0);
-
-        // data
-        QString connectionName;
-        QByteArray redisList;
+        static bool execRedisCommand(std::initializer_list<QByteArray> cmd, QString connectionPool = "redis", QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0);
 };
 
 #endif // REDISMAPPRIVATE_H
