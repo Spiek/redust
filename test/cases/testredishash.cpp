@@ -9,7 +9,7 @@
 // helper macros
 #define FAIL(data) QFAIL(qPrintable(data))
 #define VERIFY2(condition,message) QVERIFY2(condition, qPrintable(message))
-#define GENKEYNAME(keyIndex) QString(KEYNAMESPACE"_%1").arg(keyIndex).toLocal8Bit()
+#define GENKEYNAME(keyIndex) QString(KEYNAMESPACE"_Hash_%1").arg(keyIndex).toLocal8Bit()
 #define GENINTRANDRANGE(from,to) qrand() % ((to + 1) - from) + from
 #define GENFLOATRANDRANGE(from,to) from + ((double)qrand() / RAND_MAX) * (to - from)
 
@@ -110,7 +110,7 @@ void TestRedisHash::hash()
     {
         QMap<float, double> data;
         while(data.count() != count) {
-            data.insert(GENFLOATRANDRANGE(563,545321), GENFLOATRANDRANGE(563,545321));
+            data.insert(GENFLOATRANDRANGE(563,54500321), GENFLOATRANDRANGE(563,54005321));
         };
         TestTemplateHelper<float, double>::hashInsert(data, ++index, false, true, true);
         TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
