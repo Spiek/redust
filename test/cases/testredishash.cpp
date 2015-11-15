@@ -9,7 +9,7 @@
 // helper macros
 #define FAIL(data) QFAIL(qPrintable(data))
 #define VERIFY2(condition,message) QVERIFY2(condition, qPrintable(message))
-#define GENKEYNAME(keyIndex) QString(KEYNAMESPACE"_Hash_%1").arg(keyIndex).toLocal8Bit()
+#define GENKEYNAME(keyIndex) QString(KEYNAMESPACE"_Hash%1").arg(keyIndex).toLocal8Bit()
 #define GENINTRANDRANGE(from,to) qrand() % ((to + 1) - from) + from
 #define GENFLOATRANDRANGE(from,to) from + ((double)qrand() / RAND_MAX) * (to - from)
 
@@ -40,12 +40,16 @@ class TestTemplateHelper
             QByteArray strHash = GENKEYNAME(keyIndex);
             RedisHash<Key, Value> rHash(strHash, binarizeKey, binarizeValue);
 
+			// reverse the data (to speedup reverse lookups)
+            QMap<Value, Key> dataReversed;
+            for(auto itr = data.begin(); itr != data.end(); itr++) dataReversed.insert(itr.value(), itr.key());
+
             // 1. check over simple foreach
             qInfo(" - Iterate over all values using Foreach approach and check the values");
             VERIFY2(data.count() == rHash.keys().count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.keys().count()).arg(data.count()));
             for(Key key : rHash.keys()) {
                 if(data.value(key) != rHash.value(key)) {
-                    FAIL(QString("A Check Failed:\nstored: %2,%3\nValue of hasmap for key (if exists):%4")
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hasmap for key (if exists):%3")
                          .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
                          .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
                          .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
@@ -53,13 +57,13 @@ class TestTemplateHelper
                 }
             }
 
-            // 2. check over iterator foreach (cache = 1)
-            int cache = GENINTRANDRANGE(1, 63);
+            // 2. check over iterator foreach wird random cache
+            int cache = GENINTRANDRANGE(3, 63);
             qInfo(" - Iterate over all values using Iterator Foreach approach (cache = %d) and check the values", cache);
             int count = 0;
             for(auto itr = rHash.begin(cache); itr != rHash.end(); itr++) {
                 if(data.value(itr.key()) != itr.value()) {
-                    FAIL(QString("A Check Failed:\nstored: %2,%3\nValue of hashmap for key (if exists):%4")
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
                          .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
                          .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
                          .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
@@ -68,6 +72,91 @@ class TestTemplateHelper
                 count++;
             }
             VERIFY2(data.count() == count, QString("Failed field count not equal (Redis: %1, Local: %2)").arg(count).arg(data.count()));
+
+            // 3. check over QMap
+            qInfo(" - Iterate over all values using RedisHash::toMap() approach and check the values");
+            QMap<Key, Value> mapData = rHash.toMap();
+            VERIFY2(mapData.count() == rHash.count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.count()).arg(mapData.count()));
+            for(auto itr = mapData.begin(); itr != mapData.end(); itr++) {
+                if(data.value(itr.key()) != itr.value()) {
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
+                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
+                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                    );
+                }
+            }
+
+            // 4. check over QHash
+            qInfo(" - Iterate over all values using RedisHash::toHash() approach and check the values");
+            QHash<Key, Value> mapHash = rHash.toHash();
+            VERIFY2(mapHash.count() == rHash.count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.count()).arg(mapHash.count()));
+            for(auto itr = mapHash.begin(); itr != mapHash.end(); itr++) {
+                if(data.value(itr.key()) != itr.value()) {
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
+                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
+                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                    );
+                }
+            }
+
+            // 5. check keys
+            qInfo(" - Check keys using RedisHash::keys()");
+            for(Key key : rHash.keys()) {
+                if(!data.contains(key)) {
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
+                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
+                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
+                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
+                    );
+                }
+            }
+
+            // 6. check keys (with cache)
+            qInfo(" - Check keys using RedisHash::keys() (with a cache of %d)", cache);
+            for(Key key : rHash.keys(cache)) {
+                if(!data.contains(key)) {
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
+                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
+                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
+                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
+                    );
+                }
+            }
+
+            // 7. check values
+            qInfo(" - Check values using RedisHash::values()");
+            for(Value value : rHash.values()) {
+                if(!dataReversed.contains(value)) {
+                    FAIL(QString("A Check Failed:\nstored: %1")
+                         .arg(RedisValue<Value>::serialize(value, binarizeValue).toHex().data())
+                    );
+                }
+            }
+
+            // 7. check values (with cache)
+            qInfo(" - Check values using RedisHash::values() (with a cache of %d)", cache);
+            for(Value value : rHash.values(cache)) {
+                if(!dataReversed.contains(value)) {
+                    FAIL(QString("A Check Failed:\nstored: %1")
+                         .arg(RedisValue<Value>::serialize(value, binarizeValue).toHex().data())
+                    );
+                }
+            }
+
+            // 8. take all values
+            qInfo(" - Loop and take all elements one by one (check the returned values if it exists in the list), until the list is (hopefully) empty");
+            for(Key key : data.keys()) {
+                if(data.value(key) != rHash.take(key)) {
+                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
+                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
+                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
+                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
+                    );
+                }
+            }
+            VERIFY2(rHash.count() == 0, QString("Expect an empty list, but it's not (Count: %1)").arg(rHash.count()));
         }
 };
 
@@ -94,7 +183,7 @@ void TestRedisHash::initTestCase()
 
 void TestRedisHash::clear()
 {
-    for(QByteArray key : RedisInterface::keys(KEYNAMESPACE"_*")) {
+    for(QByteArray key : RedisInterface::keys(GENKEYNAME("") + "*")) {
         if(RedisInterface::del(key, false)) qInfo("Delete key %s", qPrintable(key));
         else FAIL(QString("Cannot Delete key %1").arg(QString(key)));
     }
