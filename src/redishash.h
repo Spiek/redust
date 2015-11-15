@@ -108,6 +108,7 @@ class RedisHash
                 this->cacheSize = cacheSize;
                 this->binarizeKey = binarizeKey;
                 this->binarizeValue = binarizeValue;
+                this->pos = pos;
                 if(pos >= 0) this->forward(1);
             }
 
