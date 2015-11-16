@@ -92,7 +92,7 @@ class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Me
             value->SerializeToArray(data.data(), value->ByteSize());
             return data;
         }
-        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::serialize(&value, binarize); }
         static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             Q_UNUSED(binarize);
             NORM2VALUE(T) t;
