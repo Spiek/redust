@@ -44,20 +44,7 @@ class TestTemplateHelper
             QMap<Value, Key> dataReversed;
             for(auto itr = data.begin(); itr != data.end(); itr++) dataReversed.insert(itr.value(), itr.key());
 
-            // 1. check over simple foreach
-            qInfo(" - Iterate over all values using Foreach approach and check the values");
-            VERIFY2(data.count() == rHash.keys().count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.keys().count()).arg(data.count()));
-            for(Key key : rHash.keys()) {
-                if(data.value(key) != rHash.value(key)) {
-                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hasmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
-                    );
-                }
-            }
-
-            // 2. check over iterator foreach wird random cache
+            // 1. check over iterator foreach wird random cache
             int cache = GENINTRANDRANGE(3, 63);
             qInfo(" - Iterate over all values using Iterator Foreach approach (cache = %d) and check the values", cache);
             int count = 0;
@@ -73,7 +60,7 @@ class TestTemplateHelper
             }
             VERIFY2(data.count() == count, QString("Failed field count not equal (Redis: %1, Local: %2)").arg(count).arg(data.count()));
 
-            // 3. check over QMap
+            // 2. check over QMap
             qInfo(" - Iterate over all values using RedisHash::toMap() approach and check the values");
             QMap<Key, Value> mapData = rHash.toMap();
             VERIFY2(mapData.count() == rHash.count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.count()).arg(mapData.count()));
@@ -87,7 +74,7 @@ class TestTemplateHelper
                 }
             }
 
-            // 4. check over QHash
+            // 3. check over QHash
             qInfo(" - Iterate over all values using RedisHash::toHash() approach and check the values");
             QHash<Key, Value> mapHash = rHash.toHash();
             VERIFY2(mapHash.count() == rHash.count(), QString("Failed field count not equal (Redis: %1, Local: %2)").arg(rHash.count()).arg(mapHash.count()));
@@ -101,19 +88,7 @@ class TestTemplateHelper
                 }
             }
 
-            // 5. check keys
-            qInfo(" - Check keys using RedisHash::keys()");
-            for(Key key : rHash.keys()) {
-                if(!data.contains(key)) {
-                    FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
-                    );
-                }
-            }
-
-            // 6. check keys (with cache)
+            // 4. check keys (with cache)
             qInfo(" - Check keys using RedisHash::keys() (with a cache of %d)", cache);
             for(Key key : rHash.keys(cache)) {
                 if(!data.contains(key)) {
@@ -125,17 +100,7 @@ class TestTemplateHelper
                 }
             }
 
-            // 7. check values
-            qInfo(" - Check values using RedisHash::values()");
-            for(Value value : rHash.values()) {
-                if(!dataReversed.contains(value)) {
-                    FAIL(QString("A Check Failed:\nstored: %1")
-                         .arg(RedisValue<Value>::serialize(value, binarizeValue).toHex().data())
-                    );
-                }
-            }
-
-            // 7. check values (with cache)
+            // 5. check values (with cache)
             qInfo(" - Check values using RedisHash::values() (with a cache of %d)", cache);
             for(Value value : rHash.values(cache)) {
                 if(!dataReversed.contains(value)) {
@@ -145,10 +110,11 @@ class TestTemplateHelper
                 }
             }
 
-            // 8. take all values
-            qInfo(" - Loop and take all elements one by one (check the returned values if it exists in the list), until the list is (hopefully) empty");
+            // 6. take all values
+            qInfo(" - Loop and take all elements one by one (check the returned values if it exists in the list), until the list is empty");
             for(Key key : data.keys()) {
-                if(data.value(key) != rHash.take(key)) {
+                bool result = false;
+                if(data.value(key) != rHash.take(key, true, &result) || !result) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
                          .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
                          .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
