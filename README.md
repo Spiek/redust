@@ -1,2 +1,2 @@
-redismap
+RedisTemplates
 ========
