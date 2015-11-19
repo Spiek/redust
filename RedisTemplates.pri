@@ -5,17 +5,16 @@
 #-------------------------------------------------
 
 QT       += core network
-QT       -= gui
 CONFIG   += c++11
 
-SOURCES += src/redismapconnectionmanager.cpp \
-           src/redisinterface.cpp
+SOURCES += $$PWD/src/redismapconnectionmanager.cpp \
+           $$PWD/src/redisinterface.cpp
 
-HEADERS += src/redishash.h \
-           src/redismapconnectionmanager.h \
-           src/redisvalue.h \
-           src/redisinterface.h
-INCLUDEPATH += src
+HEADERS += $$PWD/src/redishash.h \
+           $$PWD/src/redismapconnectionmanager.h \
+           $$PWD/src/redisvalue.h \
+           $$PWD/src/redisinterface.h
+INCLUDEPATH += $$PWD/src
 
 # link against protobuf lib
 LIBS += -lprotobuf
