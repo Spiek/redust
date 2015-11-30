@@ -18,4 +18,4 @@ DEFINES += REDIS_SERVER=\\\"127.0.0.1\\\"
 DEFINES += REDIS_SERVER_PORT=6379
 
 # include redis templates
-include(RedisTemplates.pri)
+include(recotec.pri)

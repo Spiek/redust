@@ -1,4 +1,4 @@
-#include "redismapconnectionmanager.h"
+#include "recotec/redisconnectionmanager.h"
 
 QMap<QString, RedisConnectionPool*> RedisConnectionManager::mapConPools;
 QMutex RedisConnectionManager::mutex;

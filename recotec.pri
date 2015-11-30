@@ -14,7 +14,7 @@ HEADERS += $$PWD/src/redishash.h \
            $$PWD/src/redismapconnectionmanager.h \
            $$PWD/src/redisvalue.h \
            $$PWD/src/redisinterface.h
-INCLUDEPATH += $$PWD/src
+INCLUDEPATH += $$PWD/include
 
 # link against protobuf lib
 LIBS += -lprotobuf

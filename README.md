@@ -1,25 +1,24 @@
-## Redis Container Templates for C++
+## ReCoTeC - Redis Container Templates for C++
 
-Redis Container Templates provides easy plattform intependant access for Qt-C++ applications
+ReCoTeC provides easy plattform intependant access for Qt-C++ applications
 to access data stored in Redis using C++-Container-Class-Templates.
 
-Redis Container Templates don't save anything locally, all actions are forwarded directly to redis.
+ReCoTeC don't save anything locally, all actions are forwarded directly to redis.
 
 ###Supported Types
 
-Redis Container Templates are able to handle the following Types as Key or Value:
+ReCoTeC are able to handle the following Types as Key or Value:
 
  - All Types which QVariant is able to serialize to QByteArray
  - All classes which inherits from google::protobuf::Message
  - Integral Types are able to become serialized in binary or as string
 
-Redis Container Templates currently supports the following container types:
+ReCoTeC currently supports the following container types:
 
  - RedisHash< Key, Value > - Hash-table-based dictionary
 	 - function signatures taken from Qt's QHash
 	 - O(1) lookups on key
 	 - unsorted
-	 - support full CRUD schema
 
 ### How to compile?
 
@@ -27,15 +26,15 @@ Redis Container Templates currently supports the following container types:
 
 In your Project file:
 ```qmake
-include(RedisTemplates.pri)
+include(recotec.pri)
 ```
 **Dynamic:**
 
-1. compile RedisTemplates.pro
+1. compile recotec.pro
 2. make the compiled library available to your qt build system
 3. add the following to your pro file:
 ```qmake
-LIBS += -lredistemplates
+LIBS += -lrecotec
 ```
 ### How to use?
 Here an example use case:

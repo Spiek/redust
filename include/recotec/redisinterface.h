@@ -7,7 +7,7 @@
 #include <QMutex>
 
 // redis
-#include "redismapconnectionmanager.h"
+#include "recotec/redisconnectionmanager.h"
 
 class RedisInterface
 {
