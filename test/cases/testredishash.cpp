@@ -171,11 +171,13 @@ void TestRedisHash::hash()
     int index = 0;
     int count = 10000;
 
-    // double float test
+    // <float, double>-Test
     {
         QMap<float, double> data;
+        int i = 0;
         while(data.count() != count) {
-            data.insert(GENFLOATRANDRANGE(563,54500321), GENFLOATRANDRANGE(563,54005321));
+            i++;
+            data.insert(i + GENFLOATRANDRANGE(0, 0.9), i + GENINTRANDRANGE(2343, 2324252) + GENFLOATRANDRANGE(0, 0.9));
         };
         TestTemplateHelper<float, double>::hashInsert(data, ++index, false, true, true);
         TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
@@ -185,7 +187,7 @@ void TestRedisHash::hash()
         qInfo();
     }
 
-    // QString int test
+    // <QByteArray, int>-Test
     {
         QMap<QByteArray, int> data;
         while(data.count() != count) {
