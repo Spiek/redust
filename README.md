@@ -1,37 +1,32 @@
 ## ReCoTeC - Redis Container Templates for C++
 
 ReCoTeC provides easy plattform intependant access for Qt-C++ applications
-to access data stored in Redis using C++-Container-Class-Templates.
+to access data stored in Redis using C++\-Container-Class-Templates.   
+All Template Classes are acting as direct proxies to Redis, so nothing is saved or processed locally.   
 
-ReCoTeC don't save anything locally, all actions are forwarded directly to redis.
-
-###Supported Types
-
-ReCoTeC are able to handle the following Types as Key or Value:
-
- - All Types which QVariant is able to serialize to QByteArray
+### Supported Types
+ReCoTeC are able to handle the following Types as Key or Value type:   
+ - All Types which QVariant is able from/to serialize to QByteArray
  - All classes which inherits from google::protobuf::Message
- - Integral Types are able to become serialized in binary or as string
+ - Integral Types are able to become serialized into binary or string format
 
+### Available Container Types
 ReCoTeC currently supports the following container types:
-
  - RedisHash< Key, Value > - Hash-table-based dictionary
-	 - function signatures taken from Qt's QHash
-	 - O(1) lookups on key
+	 - act as [Redis hash][redis-hashes-explained]
+	 - reimplement all possible public function signatures of [QHash][qhash-public-signature]
+	 - O(1) lookups on key (by redis)
 	 - unsorted
 
 ### How to compile?
-
-**Static:**
-
+**Static:**  
 In your Project file:
 ```qmake
 include(recotec.pri)
 ```
 **Dynamic:**
-
 1. compile recotec.pro
-2. make the compiled library available to your qt build system
+2. make the compiled library and headers available to your qt build system
 3. add the following to your pro file:
 ```qmake
 LIBS += -lrecotec
@@ -41,7 +36,7 @@ Here an example use case:
 ```c++
 #include <QString>
 #include <QDebug>
-#include <redishash.h>
+#include <recotec/redishash.h>
 
 int main()
 {
@@ -57,8 +52,8 @@ int main()
     rhash.insert(956, "This is a Test Insert 2");
 
     // get values
-    qDebug() << rhash.value(123);
-    qDebug() << rhash.value(956);
+    qDebug("%s", qPrintable(rhash.value(123));
+    qDebug("%s", qPrintable(rhash.value(956));
 
     // c++11 iteration
     qDebug("c++11 Iteration");
@@ -66,8 +61,8 @@ int main()
         qDebug("%i -> %s", key, qPrintable(rhash.value(key)));
     }
 
-    // c++ iteration
-    qDebug("c++ Iteration");
+    // C++99 iteration
+    qDebug("c++99 Iteration");
     for(auto itr = rhash.begin(); itr != rhash.end(); itr++) {
         qDebug("%i -> %s", itr.key(), qPrintable(itr.value()));
     }
@@ -79,21 +74,21 @@ int main()
     qDebug() << rhash.count();
 
     // take element
-    qDebug() << rhash.take(956);
+    qDebug("%s", qPrintable(rhash.take(956));
 }
 ```
 Prints:
 ```
-"This is a Test Insert 1"
-"This is a Test Insert 2"
+This is a Test Insert 1
+This is a Test Insert 2
 c++11 Iteration
 123 -> This is a Test Insert 1
 956 -> This is a Test Insert 2
-c++ Iteration
+c++99 Iteration
 123 -> This is a Test Insert 1
 956 -> This is a Test Insert 2
 1
-"This is a Test Insert 2"
+This is a Test Insert 2
 ```
 
 ... and generates the following Redis Command sequence:
@@ -112,3 +107,10 @@ HDEL | MYREDISKEY | 123
 HLEN | MYREDISKEY | 
 HGET | MYREDISKEY | 956
 HDEL | MYREDISKEY | 956
+
+
+[//]: # 
+
+[redis-hashes-explained]: <http://redis.io/topics/data-types#hashes>
+[qhash-public-signature]: <http://doc.qt.io/qt-5/qhash.html#public-functions>
+
