@@ -25,9 +25,9 @@ In your Project file:
 include(recotec.pri)
 ```
 **Dynamic:**  
-1. compile recotec.pro
-2. make the compiled library and headers available to your qt build system
-3. add the following to your pro file:
+1. compile recotec.pro   
+2. make the compiled library and headers available to your qt build system   
+3. add the following to your pro file:   
 ```qmake
 LIBS += -lrecotec
 ```
