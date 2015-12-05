@@ -1,11 +1,11 @@
 ## ReCoTeC - Redis Container Templates for C++
 
-ReCoTeC provides easy plattform intependant access for Qt-C++ applications
+ReCoTeC provides easy plattform intependant access for Qt-C++ applications   
 to access data stored in Redis using C++\-Container-Class-Templates.   
 All Template Classes are acting as direct proxies to Redis, so nothing is saved or processed locally.   
 
 ### Supported Types
-ReCoTeC are able to handle the following Types as Key or Value type:   
+ReCoTeC are able to handle the following types as Key or Value type:   
  - All Types which QVariant is able from/to serialize to QByteArray
  - All classes which inherits from google::protobuf::Message
  - Integral Types are able to become serialized into binary or string format
@@ -24,7 +24,7 @@ In your Project file:
 ```qmake
 include(recotec.pri)
 ```
-**Dynamic:**
+**Dynamic:**  
 1. compile recotec.pro
 2. make the compiled library and headers available to your qt build system
 3. add the following to your pro file:
