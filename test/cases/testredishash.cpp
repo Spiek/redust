@@ -41,7 +41,7 @@ class TestTemplateHelper
                 // to work around random write fails on windows, we waitForBytesWritten until it succeed
                 // in addition we force an additional qWait to work around event loop socket writing issues
                 while(socket->bytesToWrite()) while(!socket->waitForBytesWritten());
-                QTest::qWait(1000);
+                RedisInterface::ping();
             }
         }
 
