@@ -267,9 +267,37 @@ class RedisHash
                                    RedisValue<Value>::serialize(value, this->binarizeValue), waitForAnswer, this->connectionPool);
         }
 
+        bool insert(QMap<Key, Value> values, bool waitForAnswer = false)
+        {
+            QList<QByteArray> keys;
+            QList<QByteArray> vals;
+            for(auto itr = values.begin(); itr != values.end(); itr++) {
+                keys.append(RedisValue<Key>::serialize(itr.key(), this->binarizeKey));
+                vals.append(RedisValue<Value>::serialize(itr.value(), this->binarizeValue));
+            }
+            return RedisInterface::hmset(this->list, keys, vals, waitForAnswer, this->connectionPool);
+        }
+
+        bool insert(QHash<Key, Value> values, bool waitForAnswer = false)
+        {
+            QList<QByteArray> keys;
+            QList<QByteArray> vals;
+            for(auto itr = values.begin(); itr != values.end(); itr++) {
+                keys.append(RedisValue<Key>::serialize(itr.key(), this->binarizeKey));
+                vals.append(RedisValue<Value>::serialize(itr.value(), this->binarizeValue));
+            }
+            return RedisInterface::hmset(this->list, keys, vals, waitForAnswer, this->connectionPool);
+        }
+
+        bool insert(QList<Key> keys, QList<Value> values, bool waitForAnswer = false)
+        {
+            if(keys.count() != values.count()) return false;
+            return RedisInterface::hmset(this->list, keys, values, waitForAnswer, this->connectionPool);
+        }
+
         NORM2VALUE(Value) value(Key key)
         {
-            return RedisValue<Value>::deserialize(RedisInterface::hget(this->list, RedisValue<Key>::serialize(key, this->binarizeKey)), this->binarizeValue);
+            return RedisValue<Value>::deserialize(RedisInterface::hget(this->list, RedisValue<Key>::serialize(key, this->binarizeKey), this->connectionPool), this->binarizeValue);
         }
 
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
@@ -320,6 +348,23 @@ class RedisHash
 
             // return list
             return list;
+        }
+
+        QList<NORM2VALUE(Value)> values(QList<NORM2VALUE(Key)> keys)
+        {
+            // serialize all keys to QBytearray list and execute hmget command
+            QList<QByteArray> sKeys;
+            for(auto itr = keys.begin(); itr != keys.end(); itr++) {
+                sKeys << RedisValue<Key>::serialize(*itr, this->binarizeKey);
+            }
+            QList<QByteArray> sValues = RedisInterface::hmget(this->list, sKeys, this->connectionPool);
+
+            // deserialize values to Value Type and append it to values list
+            QList<NORM2VALUE(Value)> values;
+            while(!sValues.isEmpty()) {
+                values.append(RedisValue<Value>::deserialize(sValues.takeFirst(), this->binarizeValue));
+            }
+            return values;
         }
 
         QMap<NORM2VALUE(Key),NORM2VALUE(Value)> toMap(int fetchChunkSize = -1)
