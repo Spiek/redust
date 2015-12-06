@@ -1,6 +1,26 @@
 #include "recotec/redisinterface.h"
 
 //
+// General Redis Functions
+//
+
+bool RedisInterface::ping(QByteArray data, bool async, QString connectionPool)
+{
+    // Build and execute Command
+    // PING [data]
+    // src: http://redis.io/commands/ping
+    QByteArray res;
+    QList<QByteArray> lstCmd = { "PING" };
+    if(!data.isEmpty()) lstCmd.append(data);
+    bool result = RedisInterface::execRedisCommand(lstCmd, connectionPool, async ? 0 : &res);
+
+    // evaluate result
+    if(async) return result;
+    else return data.isEmpty() ? res == "PONG" : res == data;
+}
+
+
+//
 // Key-Value Redis Functions
 //
 
@@ -37,6 +57,7 @@ QList<QByteArray> RedisInterface::keys(QByteArray pattern, QString connectionPoo
     RedisInterface::execRedisCommand({ "KEYS", pattern }, connectionPool, 0, &keys);
     return keys;
 }
+
 
 //
 // Hash Redis Functions

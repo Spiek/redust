@@ -12,6 +12,9 @@
 class RedisInterface
 {
     public:
+        // General Redis Functions
+        static bool ping(QByteArray data = "", bool async = false, QString connectionPool = "redis");
+
         // Key-Value Redis Functions
         static bool del(QByteArray key, bool async = true, QString connectionPool = "redis");
         static bool exists(QByteArray key, QString connectionPool = "redis");
