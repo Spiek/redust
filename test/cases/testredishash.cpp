@@ -1,7 +1,7 @@
 #include <QtTest/QtTest>
 
-#include "recotec/redishash.h"
-#include "recotec/redisconnectionmanager.h"
+#include <recotec/redishash.h>
+#include <recotec/redisconnectionmanager.h>
 
 // const variables
 #define KEYNAMESPACE "RedisTemplates_TestCase"
