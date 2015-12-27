@@ -33,15 +33,18 @@ class TestTemplateHelper
                     );
                 }
             }
-			
-            // if we insert the data async, wait until all data is actually send to redis
+
+
+            // if we insert the data async, we wait until all set operations are processed by redis before continue
             if(!sync) {
                 QTcpSocket* socket = RedisConnectionManager::requestConnection("redis", true);
 
                 // to work around random write fails on windows, we waitForBytesWritten until it succeed
-                // in addition we force an additional qWait to work around event loop socket writing issues
                 while(socket->bytesToWrite()) while(!socket->waitForBytesWritten());
-                RedisInterface::ping();
+
+                // after all data was written to redis, we do a key lookup which will processed by redis as soon as all outstanding SET operations are processed,
+                // after this point we can be certain that all SET operations are processed!
+                rHash.value(data.firstKey());
             }
         }
 
