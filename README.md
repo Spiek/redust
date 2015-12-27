@@ -18,17 +18,17 @@ ReCoTeC currently supports the following container types:
 	 - O(1) lookups on key (by redis)
 	 - unsorted
 
-### How to compile?
+### How to compile the library?
 **Static:**  
-In your Project file:
+Add to your Project file:
 ```qmake
 include(recotec.pri)
 ```
 **Dynamic:**  
-1. qmake recotec.pro
-2. make
-3. make install
-4. add the following to your pro file:   
+* qmake recotec.pro
+* make
+* make install
+* add the following to your pro file:
 ```qmake
 LIBS += -lrecotec
 ```
