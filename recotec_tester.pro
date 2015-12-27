@@ -1,6 +1,6 @@
-QT += testlib core network
+QT += testlib
 TEMPLATE = app
-TARGET = RedisTemplates.test
+TARGET = recotectester
 INCLUDEPATH += src/test
 
 # Features

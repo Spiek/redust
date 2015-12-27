@@ -1,11 +1,11 @@
+# Features
+DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
 
-TARGET   = redistemplates
+# Lib settings
+TARGET   = librecotec
 TEMPLATE = lib
 CONFIG   += console
 CONFIG   -= app_bundle
 
-# Features
-DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
-
-# redis templates
-include(RedisTemplates.pri)
+# Include recotec
+include(recotec.pri)
