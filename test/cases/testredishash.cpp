@@ -28,8 +28,8 @@ class TestTemplateHelper
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
                          .arg(strMode)
                          .arg(strHash.data())
-                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).data())
-                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).data())
+                         .arg(TypeSerializer<Key>::serialize(itr.key(), binarizeKey).data())
+                         .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).data())
                     );
                 }
             }
@@ -64,9 +64,9 @@ class TestTemplateHelper
             for(auto itr = rHash.begin(cache); itr != rHash.end(); itr++) {
                 if(data.value(itr.key()) != itr.value()) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                         .arg(TypeSerializer<Key>::serialize(itr.key(), binarizeKey).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).data())
                     );
                 }
                 count++;
@@ -80,9 +80,9 @@ class TestTemplateHelper
             for(auto itr = mapData.begin(); itr != mapData.end(); itr++) {
                 if(data.value(itr.key()) != itr.value()) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                         .arg(TypeSerializer<Key>::serialize(itr.key(), binarizeKey).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).data())
                     );
                 }
             }
@@ -94,9 +94,9 @@ class TestTemplateHelper
             for(auto itr = mapHash.begin(); itr != mapHash.end(); itr++) {
                 if(data.value(itr.key()) != itr.value()) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(itr.key(), binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(itr.value(), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                         .arg(TypeSerializer<Key>::serialize(itr.key(), binarizeKey).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).data())
                     );
                 }
             }
@@ -106,9 +106,9 @@ class TestTemplateHelper
             for(Key key : rHash.keys(cache)) {
                 if(!data.contains(key)) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Key>::serialize(key, binarizeKey).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(key), binarizeValue).toHex().data())
                     );
                 }
             }
@@ -118,7 +118,7 @@ class TestTemplateHelper
             for(Value value : rHash.values(cache)) {
                 if(!dataReversed.contains(value)) {
                     FAIL(QString("A Check Failed:\nstored: %1")
-                         .arg(RedisValue<Value>::serialize(value, binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(value, binarizeValue).toHex().data())
                     );
                 }
             }
@@ -129,9 +129,9 @@ class TestTemplateHelper
                 bool result = false;
                 if(data.value(key) != rHash.take(key, true, &result) || !result) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
-                         .arg(RedisValue<Key>::serialize(key, binarizeKey).toHex().data())
-                         .arg(RedisValue<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
-                         .arg(RedisValue<Value>::serialize(data.value(key), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Key>::serialize(key, binarizeKey).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(key), binarizeValue).toHex().data())
                     );
                 }
             }
