@@ -6,7 +6,7 @@
 #include <QString>
 
 // redis
-#include "redisvalue.h"
+#include "typeserializer.h"
 #include "redisinterface.h"
 
 template< typename Key, typename Value >

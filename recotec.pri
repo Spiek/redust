@@ -6,7 +6,7 @@ SOURCES += $$PWD/src/redisconnectionmanager.cpp \
 
 HEADERS += $$PWD/include/recotec/redishash.h \
            $$PWD/include/recotec/redisconnectionmanager.h \
-           $$PWD/include/recotec/redisvalue.h \
+           $$PWD/include/recotec/typeserializer.h \
            $$PWD/include/recotec/redisinterface.h
 INCLUDEPATH += $$PWD/include
 
