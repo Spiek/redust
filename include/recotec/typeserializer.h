@@ -1,5 +1,5 @@
-#ifndef REDISVALUE_H
-#define REDISVALUE_H
+#ifndef TYPESERIALIZER_H
+#define TYPESERIALIZER_H
 
 // std lib
 #include <typeinfo>
@@ -44,7 +44,7 @@ struct ValueRefType<T*>
 
 /* Parser for QVariant and arithmetic types */
 template< typename T, typename Enable = void >
-class RedisValue
+class TypeSerializer
 {
     public:
         static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
@@ -61,7 +61,7 @@ class RedisValue
                 return QByteArray(data, sizeof(NORM2VALUE(T)) - (data - (char*)(void*)&t));
             } else return QVariant(*value).value<QByteArray>();
         }
-        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::serialize(&value, binarize); }
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
         static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             NORM2VALUE(T) t;
             if(!value) return t;
@@ -74,14 +74,14 @@ class RedisValue
             } else t = QVariant(*value).value<NORM2VALUE(T)>();
             return t;
         }
-        static inline NORM2VALUE(T) deserialize(QByteArray  value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
+        static inline NORM2VALUE(T) deserialize(QByteArray  value, bool binarize) { return TypeSerializer<T>::deserialize(&value, binarize); }
 };
 
 #ifdef REDISMAP_SUPPORT_PROTOBUF
 
 /* Parser for google's protocolbuffer types */
 template<typename T>
-class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, NORM2VALUE(T)>::value>::type >
+class TypeSerializer<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, NORM2VALUE(T)>::value>::type >
 {
     public:
         static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
@@ -92,7 +92,7 @@ class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Me
             value->SerializeToArray(data.data(), value->ByteSize());
             return data;
         }
-        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return RedisValue<T>::serialize(&value, binarize); }
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
         static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             Q_UNUSED(binarize);
             NORM2VALUE(T) t;
@@ -100,9 +100,9 @@ class RedisValue<T, typename std::enable_if<std::is_base_of<google::protobuf::Me
             if(!value->isEmpty()) t.ParseFromArray(value->data(), value->length());
             return t;
         }
-        static inline NORM2VALUE(T) deserialize(QByteArray value, bool binarize) { return RedisValue<T>::deserialize(&value, binarize); }
+        static inline NORM2VALUE(T) deserialize(QByteArray value, bool binarize) { return TypeSerializer<T>::deserialize(&value, binarize); }
 };
 #endif
 
-#endif // REDISVALUE_H
+#endif // TYPESERIALIZER_H
 
