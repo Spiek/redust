@@ -39,12 +39,29 @@ class TestTemplateHelper
             if(!sync) {
                 QTcpSocket* socket = RedisConnectionManager::requestConnection("redis", true);
 
-                // to work around random write fails on windows, we waitForBytesWritten until it succeed
+                // wait syncron until all data was written to the redis server
+                // Note: to work around random write fails on windows, we waitForBytesWritten until it succeed
                 while(socket->bytesToWrite()) while(!socket->waitForBytesWritten());
 
-                // after all data was written to redis, we do a key lookup which will processed by redis as soon as all outstanding SET operations are processed,
-                // after this point we can be certain that all SET operations are processed!
-                rHash.value(data.firstKey());
+                // after all data was written to redis, we check constantly if all data were inserted into redis
+                // after every check we wait one second (a)syncron, if no data was inserted during 10 checks, we fail
+                int oldCount = 0;
+                int failed = 0;
+                int localDataCount = data.count();
+                while(true) {
+                    int count = rHash.count();
+                    if(count == localDataCount) break;
+
+                    // handle fail
+                    failed = count == oldCount ? failed + 1 : 0;
+                    if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
+
+                    // wait for redis to process requests
+                    qInfo(" - Wait additional second for redis to process our inserts (%d / %d allready inserted!)...", count, localDataCount);
+                    QTest::qWait(1000);
+
+                    oldCount = count;
+                }
             }
         }
 
