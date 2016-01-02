@@ -78,12 +78,22 @@ class TestTemplateHelper
             int cache = GENINTRANDRANGE(3, 63);
             qInfo(" - Iterate over all values using Iterator Foreach approach (cache = %d) and check the values", cache);
             int count = 0;
+            bool valueLengthCheck = rHash.valueLength(data.firstKey()) != -2;
+            if(!valueLengthCheck) qWarning(" - Skip Value length check because redis doesn't support HSTRLEN commmand!");
             for(auto itr = rHash.begin(cache); itr != rHash.end(); itr++) {
                 if(data.value(itr.key()) != itr.value()) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
                          .arg(TypeSerializer<Key>::serialize(itr.key(), binarizeKey).toHex().data())
                          .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).toHex().data())
                          .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).data())
+                    );
+                }
+                if(valueLengthCheck && TypeSerializer<Value>::serialize(itr.value(), binarizeValue).length() != rHash.valueLength(itr.key())) {
+                    FAIL(QString("Value length no equal! (local: %1:%2, remote:%3:%4)")
+                         .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).toHex().data())
+                         .arg(TypeSerializer<Value>::serialize(data.value(itr.key()), binarizeValue).length())
+                         .arg(TypeSerializer<Value>::serialize(itr.value(), binarizeValue).toHex().data())
+                         .arg(rHash.valueLength(itr.key()))
                     );
                 }
                 count++;

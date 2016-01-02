@@ -146,6 +146,23 @@ QList<QByteArray> RedisInterface::hmget(QByteArray list, QList<QByteArray> keys,
     return returnValue;
 }
 
+int RedisInterface::hstrlen(QByteArray list, QByteArray key, QString connectionPool)
+{
+    // Build and execute Command
+    // HSTRLEN key field
+    // src: http://redis.io/commands/hstrlen
+    QByteArray returnValue;
+
+    // return -2 if command is not known by redis and return -1 on general error
+    if(!RedisInterface::execRedisCommand({ "HSTRLEN", list, key }, connectionPool, &returnValue)) {
+        if(returnValue.startsWith("ERR unknown command")) return -2;
+        return -1;
+    }
+
+    // return converted value length
+    return returnValue.toInt();
+}
+
 void RedisInterface::hkeys(QByteArray list, QList<QByteArray>& result, QString connectionPool)
 {
     // Build and execute Command

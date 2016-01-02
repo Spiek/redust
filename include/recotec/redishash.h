@@ -300,6 +300,11 @@ class RedisHash
             return TypeSerializer<Value>::deserialize(RedisInterface::hget(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), this->connectionPool), this->binarizeValue);
         }
 
+        int valueLength(Key key)
+        {
+            return RedisInterface::hstrlen(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), this->connectionPool);
+        }
+
         QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
         {
             // create result data list

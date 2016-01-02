@@ -28,6 +28,7 @@ class RedisInterface
         static bool hdel(QByteArray list, QByteArray key, bool waitForAnswer = true, QString connectionPool = "redis");
         static QByteArray hget(QByteArray list, QByteArray key, QString connectionPool = "redis");
         static QList<QByteArray> hmget(QByteArray list, QList<QByteArray> keys, QString connectionPool = "redis");
+        static int hstrlen(QByteArray list, QByteArray key, QString connectionPool = "redis");
         static void hkeys(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
         static void hvals(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
         static void hgetall(QByteArray list, QList<QByteArray>& result, QString connectionPool = "redis");
