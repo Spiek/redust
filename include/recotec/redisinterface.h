@@ -22,7 +22,7 @@ class RedisInterface
 
         // Hash Redis Functions
         static int hlen(QByteArray list, QString connectionPool = "redis");
-        static bool hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer = false, QString connectionPool = "redis");
+        static bool hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer = false, bool onlySetIfNotExists = false, QString connectionPool = "redis");
         static bool hmset(QByteArray list, QList<QByteArray> keys, QList<QByteArray> values, bool waitForAnswer = false, QString connectionPool = "redis");
         static bool hexists(QByteArray list, QByteArray key, QString connectionPool = "redis");
         static bool hdel(QByteArray list, QByteArray key, bool waitForAnswer = true, QString connectionPool = "redis");

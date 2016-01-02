@@ -73,13 +73,13 @@ int RedisInterface::hlen(QByteArray list, QString connectionPool)
     return res.toInt();
 }
 
-bool RedisInterface::hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer, QString connectionPool)
+bool RedisInterface::hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer, bool onlySetIfNotExists, QString connectionPool)
 {
     // Build and execute Command
-    // HSET list key value
+    // HSET/HSETNX list key value
     // src: http://redis.io/commands/hset
     QByteArray returnValue;
-    return RedisInterface::execRedisCommand({ "HSET", list, key, value }, connectionPool, waitForAnswer ? &returnValue : 0);
+    return RedisInterface::execRedisCommand({ onlySetIfNotExists ? "HSETNX" : "HSET", list, key, value }, connectionPool, waitForAnswer ? &returnValue : 0);
 }
 
 bool RedisInterface::hmset(QByteArray list, QList<QByteArray> keys, QList<QByteArray> values, bool waitForAnswer, QString connectionPool)

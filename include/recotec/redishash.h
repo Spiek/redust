@@ -261,10 +261,10 @@ class RedisHash
             return value;
         }
 
-        bool insert(Key key, Value value, bool waitForAnswer = false)
+        bool insert(Key key, Value value, bool waitForAnswer = false, bool onlySetIfNotExists = false)
         {
             return RedisInterface::hset(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey),
-                                   TypeSerializer<Value>::serialize(value, this->binarizeValue), waitForAnswer, this->connectionPool);
+                                   TypeSerializer<Value>::serialize(value, this->binarizeValue), waitForAnswer, onlySetIfNotExists, this->connectionPool);
         }
 
         bool insert(QMap<Key, Value> values, bool waitForAnswer = false)
