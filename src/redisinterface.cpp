@@ -330,7 +330,9 @@ bool RedisInterface::execRedisCommand(QList<QByteArray> cmd, QString connectionP
         // read segment (but without the segment end chars \r and \n)
         *result = QByteArray(rawData, protoSegmentNext - rawData - 2);
         rawData = protoSegmentNext;
-        return true;
+
+        // return false on error type, otherwise true
+        return respDataType != '-';
     }
 
     // handle Bulk String
