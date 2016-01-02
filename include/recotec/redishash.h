@@ -54,10 +54,9 @@ class RedisHash
             }
             iterator erase(bool waitForAnswer = true)
             {
-                iterator itr = *this;
-                if(itr.currentKey.isEmpty()) return *this;
-                itr.d->hdel(itr.currentKey, waitForAnswer);
-                return itr.forward(1);
+                if(this->currentKey.isEmpty()) return *this;
+                RedisInterface::hdel(this->currentKey, waitForAnswer);
+                return this->forward(1);
             }
 
             // copy operator overloadings
@@ -71,7 +70,9 @@ class RedisHash
             // comparing operator overloadings
             bool operator ==(iterator other)
             {
-                return this->pos == other.pos;
+                return this->list == other.list &&
+                       this->pos == other.pos &&
+                       this->queueElements.length() == other.queueElements.length();
             }
             bool operator !=(iterator other)
             {
@@ -170,7 +171,6 @@ class RedisHash
             }
 
             // data
-            RedisInterface* d;
             int cacheSize;
             int posRedis = -1;
             int pos;
