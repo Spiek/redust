@@ -19,5 +19,4 @@ DEFINES += REDIS_SERVER=\\\"127.0.0.1\\\"
 DEFINES += REDIS_SERVER_PORT=6379
 
 # link against additional libraries
-LIBS += -lprotobuf
-LIBS += -lrecotec
+include(recotec.pri)

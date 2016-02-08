@@ -4,7 +4,7 @@
 // General Redis Functions
 //
 
-bool RedisInterface::ping(QByteArray data, bool async, QString connectionPool)
+bool RedisInterface::ping(RedisServer &server, QByteArray data, bool async)
 {
     // Build and execute Command
     // PING [data]
@@ -12,7 +12,7 @@ bool RedisInterface::ping(QByteArray data, bool async, QString connectionPool)
     QByteArray res;
     QList<QByteArray> lstCmd = { "PING" };
     if(!data.isEmpty()) lstCmd.append(data);
-    bool result = RedisInterface::execRedisCommand(lstCmd, connectionPool, async ? 0 : &res);
+    bool result = RedisInterface::execRedisCommand(server, lstCmd, async ? 0 : &res);
 
     // evaluate result
     if(async) return result;
@@ -24,37 +24,37 @@ bool RedisInterface::ping(QByteArray data, bool async, QString connectionPool)
 // Key-Value Redis Functions
 //
 
-bool RedisInterface::del(QByteArray key, bool async, QString connectionPool)
+bool RedisInterface::del(RedisServer& server, QByteArray key, bool async)
 {
     // Build and execute Command
     // DEL List
     // src: http://redis.io/commands/del
     QByteArray res;
-    bool result = RedisInterface::execRedisCommand({"DEL", key }, connectionPool, async ? 0 : &res);
+    bool result = RedisInterface::execRedisCommand(server, {"DEL", key }, async ? 0 : &res);
 
     if(async) return result;
     else return result && res.toInt() == 1;
 }
 
-bool RedisInterface::exists(QByteArray key, QString connectionPool)
+bool RedisInterface::exists(RedisServer& server, QByteArray key)
 {
     // Build and execute Command
     // EXISTS list
     // src: http://redis.io/commands/exists
     QByteArray returnValue;
-    RedisInterface::execRedisCommand({ "EXISTS", key }, connectionPool, &returnValue);
+    RedisInterface::execRedisCommand(server, { "EXISTS", key }, &returnValue);
 
     // return result
     return returnValue == "1";
 }
 
-QList<QByteArray> RedisInterface::keys(QByteArray pattern, QString connectionPool)
+QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 {
     // Build and execute Command
     // KEYS pattern
     // src: http://redis.io/commands/KEYS
     QList<QByteArray> keys;
-    RedisInterface::execRedisCommand({ "KEYS", pattern }, connectionPool, 0, &keys);
+    RedisInterface::execRedisCommand(server, { "KEYS", pattern }, 0, &keys);
     return keys;
 }
 
@@ -63,26 +63,26 @@ QList<QByteArray> RedisInterface::keys(QByteArray pattern, QString connectionPoo
 // Hash Redis Functions
 //
 
-int RedisInterface::hlen(QByteArray list, QString connectionPool)
+int RedisInterface::hlen(RedisServer& server, QByteArray list)
 {
     // Build and execute Command
     // HLEN list
     // src: http://redis.io/commands/hlen
     QByteArray res;
-    RedisInterface::execRedisCommand({"HLEN", list }, connectionPool, &res);
+    RedisInterface::execRedisCommand(server, {"HLEN", list }, &res);
     return res.toInt();
 }
 
-bool RedisInterface::hset(QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer, bool onlySetIfNotExists, QString connectionPool)
+bool RedisInterface::hset(RedisServer& server, QByteArray list, QByteArray key, QByteArray value, bool waitForAnswer, bool onlySetIfNotExists)
 {
     // Build and execute Command
     // HSET/HSETNX list key value
     // src: http://redis.io/commands/hset
     QByteArray returnValue;
-    return RedisInterface::execRedisCommand({ onlySetIfNotExists ? "HSETNX" : "HSET", list, key, value }, connectionPool, waitForAnswer ? &returnValue : 0);
+    return RedisInterface::execRedisCommand(server, { onlySetIfNotExists ? "HSETNX" : "HSET", list, key, value }, waitForAnswer ? &returnValue : 0);
 }
 
-bool RedisInterface::hmset(QByteArray list, QList<QByteArray> keys, QList<QByteArray> values, bool waitForAnswer, QString connectionPool)
+bool RedisInterface::hmset(RedisServer& server, QByteArray list, QList<QByteArray> keys, QList<QByteArray> values, bool waitForAnswer)
 {
     // Build and execute Command
     // HMSET list key value [ key value ] ...
@@ -95,46 +95,46 @@ bool RedisInterface::hmset(QByteArray list, QList<QByteArray> keys, QList<QByteA
     for(;itrKey != keys.end();) {
         lst << *itrKey++ << *itrValue++;
     }
-    return RedisInterface::execRedisCommand(lst, connectionPool, waitForAnswer ? &returnValue : 0);
+    return RedisInterface::execRedisCommand(server, lst, waitForAnswer ? &returnValue : 0);
 }
 
-bool RedisInterface::hexists(QByteArray list, QByteArray key, QString connectionPool)
+bool RedisInterface::hexists(RedisServer& server, QByteArray list, QByteArray key)
 {
     // Build and execute Command
     // HEXISTS list key
     // src: http://redis.io/commands/hexists
     QByteArray returnValue;
-    RedisInterface::execRedisCommand({ "HEXISTS", list, key }, connectionPool, &returnValue);
+    RedisInterface::execRedisCommand(server, { "HEXISTS", list, key }, &returnValue);
 
     // return result
     return returnValue == "1";
 }
 
-bool RedisInterface::hdel(QByteArray list, QByteArray key, bool waitForAnswer, QString connectionPool)
+bool RedisInterface::hdel(RedisServer& server, QByteArray list, QByteArray key, bool waitForAnswer)
 {
     // Build and execute Command
     // HDEL list key
     // src: http://redis.io/commands/hdel
     QByteArray returnValue;
-    RedisInterface::execRedisCommand({ "HDEL", list, key}, connectionPool, waitForAnswer ? &returnValue : 0);
+    RedisInterface::execRedisCommand(server, { "HDEL", list, key}, waitForAnswer ? &returnValue : 0);
 
     // return result
     return waitForAnswer ? returnValue == "1" : true;
 }
 
-QByteArray RedisInterface::hget(QByteArray list, QByteArray key, QString connectionPool)
+QByteArray RedisInterface::hget(RedisServer& server, QByteArray list, QByteArray key)
 {
     // Build and execute Command
     // HGET list key
     // src: http://redis.io/commands/hget
     QByteArray returnValue;
-    RedisInterface::execRedisCommand({ "HGET", list, key }, connectionPool, &returnValue);
+    RedisInterface::execRedisCommand(server, { "HGET", list, key }, &returnValue);
 
     // return result
     return returnValue;
 }
 
-QList<QByteArray> RedisInterface::hmget(QByteArray list, QList<QByteArray> keys, QString connectionPool)
+QList<QByteArray> RedisInterface::hmget(RedisServer& server, QByteArray list, QList<QByteArray> keys)
 {
     // Build and execute Command
     // HMGET list key [ key ] ...
@@ -142,11 +142,11 @@ QList<QByteArray> RedisInterface::hmget(QByteArray list, QList<QByteArray> keys,
     QList<QByteArray> returnValue;
     keys.prepend(list);
     keys.prepend("HMGET");
-    RedisInterface::execRedisCommand(keys, connectionPool, 0, &returnValue);
+    RedisInterface::execRedisCommand(server, keys, 0, &returnValue);
     return returnValue;
 }
 
-int RedisInterface::hstrlen(QByteArray list, QByteArray key, QString connectionPool)
+int RedisInterface::hstrlen(RedisServer& server, QByteArray list, QByteArray key)
 {
     // Build and execute Command
     // HSTRLEN key field
@@ -154,7 +154,7 @@ int RedisInterface::hstrlen(QByteArray list, QByteArray key, QString connectionP
     QByteArray returnValue;
 
     // return -2 if command is not known by redis and return -1 on general error
-    if(!RedisInterface::execRedisCommand({ "HSTRLEN", list, key }, connectionPool, &returnValue)) {
+    if(!RedisInterface::execRedisCommand(server, { "HSTRLEN", list, key }, &returnValue)) {
         if(returnValue.startsWith("ERR unknown command")) return -2;
         return -1;
     }
@@ -163,35 +163,35 @@ int RedisInterface::hstrlen(QByteArray list, QByteArray key, QString connectionP
     return returnValue.toInt();
 }
 
-void RedisInterface::hkeys(QByteArray list, QList<QByteArray>& result, QString connectionPool)
+void RedisInterface::hkeys(RedisServer& server, QByteArray list, QList<QByteArray>& result)
 {
     // Build and execute Command
     // HKEYS list
     // src: http://redis.io/commands/hkeys
-    RedisInterface::execRedisCommand({ "HKEYS", list }, connectionPool, 0, &result);
+    RedisInterface::execRedisCommand(server, { "HKEYS", list }, 0, &result);
 }
 
-void RedisInterface::hvals(QByteArray list, QList<QByteArray> &result, QString connectionPool)
+void RedisInterface::hvals(RedisServer& server, QByteArray list, QList<QByteArray> &result)
 {
     // Build and execute Command
     // HVALS list
     // src: http://redis.io/commands/hvals
-    RedisInterface::execRedisCommand({ "HVALS", list }, connectionPool, 0, &result);
+    RedisInterface::execRedisCommand(server, { "HVALS", list }, 0, &result);
 }
 
-void RedisInterface::hgetall(QByteArray list, QList<QByteArray>& result, QString connectionPool)
+void RedisInterface::hgetall(RedisServer& server, QByteArray list, QList<QByteArray>& result)
 {
     // Build and execute Command
     // HGETALL list
     // src: http://redis.io/commands/hgetall
-    RedisInterface::execRedisCommand({ "HGETALL", list }, connectionPool, 0, &result);
+    RedisInterface::execRedisCommand(server, { "HGETALL", list }, 0, &result);
 }
 
-void RedisInterface::hgetall(QByteArray list, QMap<QByteArray, QByteArray>& result, QString connectionPool)
+void RedisInterface::hgetall(RedisServer& server, QByteArray list, QMap<QByteArray, QByteArray>& result)
 {
     // get data
     QList<QByteArray> elements;
-    RedisInterface::hgetall(list, elements, connectionPool);
+    RedisInterface::hgetall(server, list, elements);
 
     // copy elements to qmap
     for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
@@ -199,11 +199,11 @@ void RedisInterface::hgetall(QByteArray list, QMap<QByteArray, QByteArray>& resu
     }
 }
 
-void RedisInterface::hgetall(QByteArray list, QHash<QByteArray, QByteArray>& result, QString connectionPool)
+void RedisInterface::hgetall(RedisServer& server, QByteArray list, QHash<QByteArray, QByteArray>& result)
 {
     // get data
     QList<QByteArray> elements;
-    RedisInterface::hgetall(list, elements, connectionPool);
+    RedisInterface::hgetall(server, list, elements);
 
     // copy elements to qmap
     for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
@@ -216,19 +216,19 @@ void RedisInterface::hgetall(QByteArray list, QHash<QByteArray, QByteArray>& res
 // Scan Redis Functions
 //
 
-void RedisInterface::scan(QByteArray list, QList<QByteArray>* resultKeys, QList<QByteArray>* resultValues, int count, int pos, int* newPos, QString connectionPool)
+void RedisInterface::scan(RedisServer& server, QByteArray list, QList<QByteArray>* resultKeys, QList<QByteArray>* resultValues, int count, int pos, int* newPos)
 {
-    return RedisInterface::simplifyHScan(list, 0, resultKeys, resultValues, 0, count, pos, newPos, connectionPool);
+    return RedisInterface::simplifyHScan(server, list, 0, resultKeys, resultValues, 0, count, pos, newPos);
 }
 
-void RedisInterface::scan(QByteArray list, QList<QByteArray>& keyValues, int count, int pos, int* newPos, QString connectionPool)
+void RedisInterface::scan(RedisServer& server, QByteArray list, QList<QByteArray>& keyValues, int count, int pos, int* newPos)
 {
-    return RedisInterface::simplifyHScan(list, &keyValues, 0, 0, 0, count, pos, newPos, connectionPool);
+    return RedisInterface::simplifyHScan(server, list, &keyValues, 0, 0, 0, count, pos, newPos);
 }
 
-void RedisInterface::scan(QByteArray list, QMap<QByteArray, QByteArray>& keyValues, int count, int pos, int* newPos, QString connectionPool)
+void RedisInterface::scan(RedisServer& server, QByteArray list, QMap<QByteArray, QByteArray>& keyValues, int count, int pos, int* newPos)
 {
-    return RedisInterface::simplifyHScan(list, 0, 0, 0, &keyValues, count, pos, newPos, connectionPool);
+    return RedisInterface::simplifyHScan(server, list, 0, 0, 0, &keyValues, count, pos, newPos);
 }
 
 
@@ -236,7 +236,7 @@ void RedisInterface::scan(QByteArray list, QMap<QByteArray, QByteArray>& keyValu
 // command simplifier
 //
 
-void RedisInterface::simplifyHScan(QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray>* keys, QList<QByteArray>* values, QMap<QByteArray, QByteArray>* keyValues, int count, int pos, int* newPos, QString connectionPool)
+void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray>* keys, QList<QByteArray>* values, QMap<QByteArray, QByteArray>* keyValues, int count, int pos, int* newPos)
 {
     // if caller don't want any data, exit
     if(!lstKeyValues && !keys && !values && !keyValues) return;
@@ -246,7 +246,7 @@ void RedisInterface::simplifyHScan(QByteArray list, QList<QByteArray> *lstKeyVal
     // src: http://redis.io/commands/scan
     QList<QByteArray> type;
     QList<QByteArray> elements;
-    if(RedisInterface::execRedisCommand({"HSCAN", list, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, connectionPool, 0, &type, &elements)) {
+    if(RedisInterface::execRedisCommand(server, {"HSCAN", list, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, &type, &elements)) {
         // set new pos if wanted
         if(newPos && !type.isEmpty()) *newPos = atoi(type.first().data());
 
@@ -273,11 +273,13 @@ void RedisInterface::simplifyHScan(QByteArray list, QList<QByteArray> *lstKeyVal
 // helper
 //
 
-bool RedisInterface::execRedisCommand(QList<QByteArray> cmd, QString connectionPool, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2)
+bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2, bool blockedConnection)
 {
     // acquire socket
-    bool waitForAnswer = result || lstResultArray1 || lstResultArray2;
-    QTcpSocket* socket = RedisConnectionManager::requestConnection(connectionPool, !waitForAnswer);
+    bool waitForAnswer = blockedConnection ? false : result || lstResultArray1 || lstResultArray2;
+    QTcpSocket* socket = server.requestConnection(blockedConnection ? RedisServer::ConnectionType::Blocked :
+                                                      waitForAnswer ? RedisServer::ConnectionType::ReadWrite :
+                                                                      RedisServer::ConnectionType::WriteOnly);
     if(!socket) return false;
 
     /// Build and execute RESP request

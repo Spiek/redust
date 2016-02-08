@@ -6,48 +6,32 @@
 #include <QMutex>
 #include <QTcpSocket>
 
-class RedisConnectionPool
+class RedisServer
 {
     public:
-        RedisConnectionPool(QString redisServer, qint16 redisPort);
-        QTcpSocket* requestConnection(bool writeOnly);
+        enum class ConnectionType {
+            WriteOnly,
+            ReadWrite,
+            Blocked
+        };
+        RedisServer(QString redisServer, qint16 redisPort);
+        QTcpSocket* requestConnection(RedisServer::ConnectionType type);
+        void freeBlockedConnection(QTcpSocket *socket);
 
     private:
+        QTcpSocket* constructNewConnection(bool writeOnly);
+
+        // mutex
+        static QMutex mutex;
+
         // connection queues
-        QMap<QThread*, QTcpSocket*> mapThreadRedisConnections;
-        QMap<QThread*, QTcpSocket*> mapWriteOnlyThreadRedisConnections;
+        QMap<QThread*, QTcpSocket*> mapConnectionsWriteOnly;
+        QMap<QThread*, QTcpSocket*> mapConnectionsReadWrite;
+        QMap<QThread*, QList<QTcpSocket*>> mapConnectionsBlocked;
+
+        // redis connection data
         QString strRedisConnectionHost;
         quint16 intRedisConnectionPort;
-};
-
-class RedisConnectionManager
-{
-    public:
-        static bool addConnection(QString connectionName, QString redisServer, qint16 redisPort)
-        {
-            // lock context
-            QMutexLocker mlocker(&RedisConnectionManager::mutex);
-
-            // create pool instance if not allready happened
-            if(!RedisConnectionManager::mapConPools.contains(connectionName)) {
-                RedisConnectionManager::mapConPools.insert(connectionName, new RedisConnectionPool(redisServer, redisPort));
-            }
-            return true;
-        }
-
-        static QTcpSocket* requestConnection(QString connectionName, bool writeOnly)
-        {
-            // lock context
-            QMutexLocker mlocker(&RedisConnectionManager::mutex);
-
-            // get pool instance and try to request a connection
-            RedisConnectionPool* pool = RedisConnectionManager::mapConPools.value(connectionName);
-            return pool ? pool->requestConnection(writeOnly) : 0;
-        }
-
-    private:
-        static QMutex mutex;
-        static QMap<QString, RedisConnectionPool*> mapConPools;
 };
 
 #endif // REDISMAPCONNECTIONMANAGER_H

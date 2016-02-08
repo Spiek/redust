@@ -13,16 +13,18 @@
 #define GENINTRANDRANGE(from,to) qrand() % ((to + 1) - from) + from
 #define GENFLOATRANDRANGE(from,to) from + ((double)qrand() / RAND_MAX) * (to - from)
 
+static RedisServer redisServer(REDIS_SERVER, REDIS_SERVER_PORT);
+
 template<typename Key, typename Value>
 class TestTemplateHelper
 {
     public:
-        static void hashInsert(QMap<Key, Value> data, int keyIndex, bool sync, bool binarizeKey = true, bool binarizeValue = true)
+        static void hashInsert(QMap<Key, Value>& data, int keyIndex, bool sync, bool binarizeKey = true, bool binarizeValue = true)
         {
             QByteArray strHash = GENKEYNAME(keyIndex);
             QString strMode = !sync ? "asyncron" : "syncron";
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
-            RedisHash<Key, Value> rHash(strHash, binarizeKey, binarizeValue);
+            RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
                 if(!rHash.insert(itr.key(), itr.value(), sync)) {
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
@@ -37,7 +39,7 @@ class TestTemplateHelper
 
             // if we insert the data async, we wait until all set operations are processed by redis before continue
             if(!sync) {
-                QTcpSocket* socket = RedisConnectionManager::requestConnection("redis", true);
+                QTcpSocket* socket = redisServer.requestConnection(RedisServer::ConnectionType::WriteOnly);
 
                 // wait syncron until all data was written to the redis server
                 // Note: to work around random write fails on windows, we waitForBytesWritten until it succeed
@@ -68,7 +70,7 @@ class TestTemplateHelper
         static void hashCheck(QMap<Key, Value> data, int keyIndex, bool binarizeKey = true, bool binarizeValue = true)
         {
             QByteArray strHash = GENKEYNAME(keyIndex);
-            RedisHash<Key, Value> rHash(strHash, binarizeKey, binarizeValue);
+            RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
 
 			// reverse the data (to speedup reverse lookups)
             QMap<Value, Key> dataReversed;
@@ -180,17 +182,15 @@ void TestRedisHash::initTestCase()
     // init random
     qsrand(QTime::currentTime().msec());
 
-    // add connection pool
-    if(!RedisConnectionManager::addConnection("redis", REDIS_SERVER, REDIS_SERVER_PORT)) qFatal("Connection Pool could not be created");
-
-    // request socket
-    if(!RedisConnectionManager::requestConnection("redis", false)) qFatal("Cannot establish connection to Redis Server");
+    // create connections
+    if(!redisServer.requestConnection(RedisServer::ConnectionType::ReadWrite)) qFatal("Cannot establish ReadWrite connection to Redis Server!");
+    if(!redisServer.requestConnection(RedisServer::ConnectionType::WriteOnly)) qFatal("Cannot establish WriteOnly connection to Redis Server!");
 }
 
 void TestRedisHash::clear()
 {
-    for(QByteArray key : RedisInterface::keys(GENKEYNAME("") + "*")) {
-        if(RedisInterface::del(key, false)) qInfo("Delete key %s", qPrintable(key));
+    for(QByteArray key : RedisInterface::keys(redisServer, GENKEYNAME("") + "*")) {
+        if(RedisInterface::del(redisServer, key, false)) qInfo("Delete key %s", qPrintable(key));
         else FAIL(QString("Cannot Delete key %1").arg(QString(key)));
     }
 }
