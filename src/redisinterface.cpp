@@ -244,27 +244,31 @@ void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<Q
     // Build and exec following command
     // HSCAN list cursor COUNT count
     // src: http://redis.io/commands/scan
-    QList<QByteArray> type;
-    QList<QByteArray> elements;
-    if(RedisInterface::execRedisCommand(server, {"HSCAN", list, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, &type, &elements)) {
-        // set new pos if wanted
-        if(newPos && !type.isEmpty()) *newPos = atoi(type.first().data());
+    QList<QList<QByteArray>> returnValue;
+    if(!RedisInterface::execRedisCommand(server, {"HSCAN", list, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, 0, &returnValue) ||
+       returnValue.length() != 2) {
+            return;
+    }
 
-        // copy elements to given data
-        for(auto itr = elements.begin(); itr != elements.end();) {
-            // save key if wanted
-            if(keys) keys->append(*itr);
-            if(lstKeyValues) lstKeyValues->append(*itr);
-            itr++;
+    // set new pos if wanted
+    QByteArray posScan = returnValue.takeFirst().value(0);
+    if(newPos) *newPos = atoi(posScan.data());
 
-            // save value if wanted
-            if(values) values->append(*itr);
-            if(lstKeyValues) lstKeyValues->append(*itr);
+    // copy elements to given data
+    QList<QByteArray>& elements = returnValue.first();
+    for(auto itr = elements.begin(); itr != elements.end();) {
+        // save key if wanted
+        if(keys) keys->append(*itr);
+        if(lstKeyValues) lstKeyValues->append(*itr);
+        itr++;
 
-            // save keyvalues
-            if(keyValues) keyValues->insert(*(itr - 1), *itr);
-            itr++;
-        }
+        // save value if wanted
+        if(values) values->append(*itr);
+        if(lstKeyValues) lstKeyValues->append(*itr);
+
+        // save keyvalues
+        if(keyValues) keyValues->insert(*(itr - 1), *itr);
+        itr++;
     }
 }
 
@@ -273,10 +277,10 @@ void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<Q
 // helper
 //
 
-bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* lstResultArray1, QList<QByteArray>* lstResultArray2, bool blockedConnection)
+bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray, bool blockedConnection)
 {
     // acquire socket
-    bool waitForAnswer = blockedConnection ? false : result || lstResultArray1 || lstResultArray2;
+    bool waitForAnswer = blockedConnection ? false : result || resultArray || result2dArray;
     QTcpSocket* socket = server.requestConnection(blockedConnection ? RedisServer::ConnectionType::Blocked :
                                                       waitForAnswer ? RedisServer::ConnectionType::ReadWrite :
                                                                       RedisServer::ConnectionType::WriteOnly);
@@ -379,7 +383,8 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
         int elementCount = 0;
 
         // loop until we have parsed all segments
-        while(true) {
+        bool firstRun = true;
+        do {
             // read segment
             char* protoSegmentNext = readSegement(&rawData);
 
@@ -391,28 +396,26 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
             // if we have a collection packet
             if(packetType == '*') {
                 elementCount = length + 1;
-                if(!currentArray) currentArray = lstResultArray1;
-                else currentArray = lstResultArray2;
 
-                // stop parsing if data is not wanted by the caller
-                if(!currentArray) break;
+                // if resultArray is present, save first array in resultArray and all others (if present) in result2dArray
+                // if no result Array is present and result2dArray is present, create a new array element in it
+                currentArray = resultArray && firstRun ? resultArray :
+                               result2dArray ? &*result2dArray->insert(result2dArray->end(), QList<QByteArray>()) : 0;
+                if(firstRun) firstRun = false;
             }
 
             // if we have a null bulk string, so create a null byte array
             else if(length == -1) {
-                currentArray->append(QByteArray());
+                if(currentArray) currentArray->append(QByteArray());
             }
 
             // otherwise we have normal bulk string, so parse it
             else {
                 protoSegmentNext = readSegement(&rawData, length + 2);
-                currentArray->append(QByteArray(rawData, length));
+                if(currentArray) currentArray->append(QByteArray(rawData, length));
                 rawData = protoSegmentNext;
             }
-
-            // if we have no elements left, exit
-            if(!--elementCount) break;
-        }
+        } while(--elementCount);
         return true;
     }
 

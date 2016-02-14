@@ -45,7 +45,7 @@ class RedisInterface
         static void simplifyHScan(RedisServer& server, QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray> *keys, QList<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos);
 
         // helper
-        static bool execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *lstResultArray1 = 0, QList<QByteArray> *lstResultArray2 = 0, bool blockedConnection = false);
+        static bool execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0, bool blockedConnection = false);
 };
 
 #endif // REDISMAPPRIVATE_H
