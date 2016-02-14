@@ -299,9 +299,7 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
         content += sprintf(content, "$%i\r\n", itr->isEmpty() ? -1 : itr->length());
         content = (char*)mempcpy(content, itr->data(), itr->length());
-        *content = '\r';
-        *++content = '\n';
-        content++;
+        content = (char*)mempcpy(content, "\r\n", 2);
     }
 
     // 3. exec RESP request
