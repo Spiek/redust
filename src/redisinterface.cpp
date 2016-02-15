@@ -302,15 +302,21 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
         content = (char*)mempcpy(content, "\r\n", 2);
     }
 
-    // 3. exec RESP request
+    // 3. write RESP request to socket
     socket->write(contentOriginPos, content - contentOriginPos);
     free(contentOriginPos);
 
-    // exit if we don't have to parse the return code
-    if(!waitForAnswer) return true;
+    // if we don't have to wait for an answer return true, otherwise parse return value and return the parsing result
+    return !waitForAnswer ? true : RedisInterface::parseResponse(socket, result, resultArray, result2dArray);
+}
 
-    // 4. wait for server return code
-    socket->waitForReadyRead();
+bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList<QByteArray> *resultArray, QList<QList<QByteArray> > *result2dArray)
+{
+    // check params
+    if(!socket || !socket->isReadable() || (!result && !resultArray && !result2dArray)) return false;
+
+    // get data (wait syncronly if no data is available)
+    if(!socket->bytesAvailable()) socket->waitForReadyRead();
     QByteArray data = socket->readAll();
 
     /// Parse RESP Response

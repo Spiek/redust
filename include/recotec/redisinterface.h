@@ -46,6 +46,7 @@ class RedisInterface
 
         // helper
         static bool execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0, bool blockedConnection = false);
+        static bool parseResponse(QTcpSocket* socket, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0);
 };
 
 #endif // REDISMAPPRIVATE_H
