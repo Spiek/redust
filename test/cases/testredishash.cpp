@@ -2,6 +2,7 @@
 
 #include <recotec/redishash.h>
 #include <recotec/redisconnectionmanager.h>
+#include "recotec/redislistpoller.h"
 
 // const variables
 #define KEYNAMESPACE "RedisTemplates_TestCase"
@@ -174,6 +175,7 @@ class TestRedisHash : public QObject
     private slots:
         void initTestCase();
         void clear();
+        void redispoller();
         void hash();
 };
 
@@ -193,6 +195,35 @@ void TestRedisHash::clear()
         if(RedisInterface::del(redisServer, key, false)) qInfo("Delete key %s", qPrintable(key));
         else FAIL(QString("Cannot Delete key %1").arg(QString(key)));
     }
+}
+
+void TestRedisHash::redispoller()
+{
+    // init vars
+    int pushValuesCount = GENINTRANDRANGE(2234,24543);
+
+    // init poller and signal spyer
+    RedisListPoller poller(redisServer, {"hallo", "test"}, RedisInterface::Position::Begin, 1);
+    QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
+    poller.start();
+
+    // push pushValuesCount left
+    for(int i = 0; i < pushValuesCount; i++) {
+        RedisInterface::push(redisServer, "hallo", QByteArray::fromRawData((char*)&i, sizeof(int)));
+    }
+
+    // push pushValuesCount right
+    for(int i = 0; i < pushValuesCount; i++) {
+        RedisInterface::push(redisServer, "test", QByteArray::fromRawData((char*)&i, sizeof(int)), RedisInterface::Position::End);
+    }
+
+    // wait until timeout reached
+    QEventLoop loop;
+    loop.connect(&poller, SIGNAL(timeout()), &loop, SLOT(quit())),
+    loop.exec();
+
+    // check return code
+    QCOMPARE(spy.count(), pushValuesCount * 2);
 }
 
 void TestRedisHash::hash()
