@@ -62,6 +62,23 @@ QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 //
 // List Redis Functions
 //
+int RedisInterface::push(RedisServer &server, QByteArray key, QByteArray value, RedisInterface::PopDirection direction, bool waitForAnswer)
+{
+    return RedisInterface::push(server, key, QList<QByteArray>{value}, direction, waitForAnswer);
+}
+
+int RedisInterface::push(RedisServer &server, QByteArray key, QList<QByteArray> values, RedisInterface::PopDirection direction, bool waitForAnswer)
+{
+    // Build and execute Command
+    // [L|R]PUSH key value [value]...
+    // src: http://redis.io/commands/lpush
+    QByteArray res;
+    values.prepend(key);
+    values.prepend(direction == RedisInterface::PopDirection::Begin ? "LPUSH" : "RPUSH");
+    RedisInterface::execRedisCommand(server, values, waitForAnswer ? &res : 0);
+    return waitForAnswer ? res.toInt() : -1;
+}
+
 bool RedisInterface::bpop(QTcpSocket* socket, QList<QByteArray> lists, RedisInterface::PopDirection direction, int timeout)
 {
     // Build and execute Command

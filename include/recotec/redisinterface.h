@@ -26,6 +26,8 @@ class RedisInterface
         static QList<QByteArray> keys(RedisServer& server, QByteArray pattern = "*");
 
         // List Redis Functions
+        static int push(RedisServer& server, QByteArray key, QByteArray value, RedisInterface::PopDirection direction = PopDirection::Begin, bool waitForAnswer = false);
+        static int push(RedisServer& server, QByteArray key, QList<QByteArray> values, RedisInterface::PopDirection direction = PopDirection::Begin, bool waitForAnswer = false);
         static bool bpop(QTcpSocket *socket, QList<QByteArray> lists, RedisInterface::PopDirection direction = PopDirection::Begin, int timeout = 0);
 
         // Hash Redis Functions
