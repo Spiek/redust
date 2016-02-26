@@ -3,13 +3,13 @@ CONFIG   += c++11
 
 SOURCES += $$PWD/src/redisconnectionmanager.cpp \
            $$PWD/src/redisinterface.cpp \
-    $$PWD/src/redislistpoller.cpp
+           $$PWD/src/redislistpoller.cpp
 
 HEADERS += $$PWD/include/recotec/redishash.h \
            $$PWD/include/recotec/redisconnectionmanager.h \
            $$PWD/include/recotec/typeserializer.h \
            $$PWD/include/recotec/redisinterface.h \
-    $$PWD/src/redislistpoller.h
+           $$PWD/include/recotec/redislistpoller.h
 
 # Additional helper headers for easy access
 HEADERS += $$PWD/include/recotec/RedisHash \

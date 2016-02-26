@@ -60,6 +60,20 @@ QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 
 
 //
+// List Redis Functions
+//
+bool RedisInterface::bpop(QTcpSocket* socket, QList<QByteArray> lists, RedisInterface::PopDirection direction, int timeout)
+{
+    // Build and execute Command
+    // src: http://redis.io/commands/[BLPOP|BRPOP] lists timeout
+    lists.prepend(direction == RedisInterface::PopDirection::Begin ? "BLPOP" : "BRPOP");
+    lists.append(QByteArray::number(timeout));
+    return RedisInterface::execRedisCommand(socket, lists, 0, 0, 0, false);
+}
+
+
+
+//
 // Hash Redis Functions
 //
 
@@ -274,16 +288,19 @@ void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<Q
 
 
 //
-// helper
+// Private helpers
 //
-
-bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray, bool blockedConnection)
+bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray)
 {
-    // acquire socket
-    bool waitForAnswer = blockedConnection ? false : result || resultArray || result2dArray;
-    QTcpSocket* socket = server.requestConnection(blockedConnection ? RedisServer::ConnectionType::Blocked :
-                                                      waitForAnswer ? RedisServer::ConnectionType::ReadWrite :
-                                                                      RedisServer::ConnectionType::WriteOnly);
+    bool waitForAnswer = result || resultArray || result2dArray;
+    QTcpSocket* socket = server.requestConnection(waitForAnswer ? RedisServer::ConnectionType::ReadWrite :
+                                                                  RedisServer::ConnectionType::WriteOnly);
+    return RedisInterface::execRedisCommand(socket, cmd, result, resultArray, result2dArray, waitForAnswer);
+}
+
+bool RedisInterface::execRedisCommand(QTcpSocket *socket, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray, bool waitForAnswer)
+{
+    // check socket
     if(!socket) return false;
 
     /// Build and execute RESP request
@@ -309,6 +326,11 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
     // if we don't have to wait for an answer return true, otherwise parse return value and return the parsing result
     return !waitForAnswer ? true : RedisInterface::parseResponse(socket, result, resultArray, result2dArray);
 }
+
+
+//
+// Public helpers
+//
 
 bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList<QByteArray> *resultArray, QList<QList<QByteArray> > *result2dArray)
 {
@@ -405,6 +427,12 @@ bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList
                 // if no result Array is present and result2dArray is present, create a new array element in it
                 currentArray = resultArray && firstRun ? resultArray :
                                result2dArray ? &*result2dArray->insert(result2dArray->end(), QList<QByteArray>()) : 0;
+
+                // handle null multi bulk by creating single null value in array and exit loop
+                if(firstRun && length == -1) {
+                    if(currentArray) currentArray->append(QByteArray());
+                    break;
+                }
                 if(firstRun) firstRun = false;
             }
 

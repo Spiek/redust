@@ -12,6 +12,11 @@
 class RedisInterface
 {
     public:
+        enum class PopDirection {
+            Begin,
+            End
+        };
+
         // General Redis Functions
         static bool ping(RedisServer& server, QByteArray data = "", bool async = false);
 
@@ -19,6 +24,9 @@ class RedisInterface
         static bool del(RedisServer& server, QByteArray key, bool async = true);
         static bool exists(RedisServer& server, QByteArray key);
         static QList<QByteArray> keys(RedisServer& server, QByteArray pattern = "*");
+
+        // List Redis Functions
+        static bool bpop(QTcpSocket *socket, QList<QByteArray> lists, RedisInterface::PopDirection direction = PopDirection::Begin, int timeout = 0);
 
         // Hash Redis Functions
         static int hlen(RedisServer& server, QByteArray list);
@@ -40,13 +48,16 @@ class RedisInterface
         static void scan(RedisServer& server, QByteArray list, QList<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
         static void scan(RedisServer& server, QByteArray list, QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
 
+        // Public helpers
+        static bool parseResponse(QTcpSocket* socket, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0);
+
     private:
         // command simplifier
         static void simplifyHScan(RedisServer& server, QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray> *keys, QList<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos);
 
-        // helper
-        static bool execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0, bool blockedConnection = false);
-        static bool parseResponse(QTcpSocket* socket, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0);
+        // Private helpers
+        static bool execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0);
+        static bool execRedisCommand(QTcpSocket* socket, QList<QByteArray> cmd, QByteArray* result = 0, QList<QByteArray> *resultArray = 0, QList<QList<QByteArray>>* result2dArray = 0, bool waitForAnswer = true);
 };
 
 #endif // REDISMAPPRIVATE_H
