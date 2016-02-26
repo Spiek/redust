@@ -12,7 +12,7 @@
 class RedisInterface
 {
     public:
-        enum class PopDirection {
+        enum class Position {
             Begin,
             End
         };
@@ -26,9 +26,9 @@ class RedisInterface
         static QList<QByteArray> keys(RedisServer& server, QByteArray pattern = "*");
 
         // List Redis Functions
-        static int push(RedisServer& server, QByteArray key, QByteArray value, RedisInterface::PopDirection direction = PopDirection::Begin, bool waitForAnswer = false);
-        static int push(RedisServer& server, QByteArray key, QList<QByteArray> values, RedisInterface::PopDirection direction = PopDirection::Begin, bool waitForAnswer = false);
-        static bool bpop(QTcpSocket *socket, QList<QByteArray> lists, RedisInterface::PopDirection direction = PopDirection::Begin, int timeout = 0);
+        static int push(RedisServer& server, QByteArray key, QByteArray value, RedisInterface::Position direction = Position::Begin, bool waitForAnswer = false);
+        static int push(RedisServer& server, QByteArray key, QList<QByteArray> values, RedisInterface::Position direction = Position::Begin, bool waitForAnswer = false);
+        static bool bpop(QTcpSocket *socket, QList<QByteArray> lists, RedisInterface::Position direction = Position::Begin, int timeout = 0);
 
         // Hash Redis Functions
         static int hlen(RedisServer& server, QByteArray list);

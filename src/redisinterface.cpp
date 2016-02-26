@@ -62,28 +62,28 @@ QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 //
 // List Redis Functions
 //
-int RedisInterface::push(RedisServer &server, QByteArray key, QByteArray value, RedisInterface::PopDirection direction, bool waitForAnswer)
+int RedisInterface::push(RedisServer &server, QByteArray key, QByteArray value, RedisInterface::Position direction, bool waitForAnswer)
 {
     return RedisInterface::push(server, key, QList<QByteArray>{value}, direction, waitForAnswer);
 }
 
-int RedisInterface::push(RedisServer &server, QByteArray key, QList<QByteArray> values, RedisInterface::PopDirection direction, bool waitForAnswer)
+int RedisInterface::push(RedisServer &server, QByteArray key, QList<QByteArray> values, RedisInterface::Position direction, bool waitForAnswer)
 {
     // Build and execute Command
     // [L|R]PUSH key value [value]...
     // src: http://redis.io/commands/lpush
     QByteArray res;
     values.prepend(key);
-    values.prepend(direction == RedisInterface::PopDirection::Begin ? "LPUSH" : "RPUSH");
+    values.prepend(direction == RedisInterface::Position::Begin ? "LPUSH" : "RPUSH");
     RedisInterface::execRedisCommand(server, values, waitForAnswer ? &res : 0);
     return waitForAnswer ? res.toInt() : -1;
 }
 
-bool RedisInterface::bpop(QTcpSocket* socket, QList<QByteArray> lists, RedisInterface::PopDirection direction, int timeout)
+bool RedisInterface::bpop(QTcpSocket* socket, QList<QByteArray> lists, RedisInterface::Position direction, int timeout)
 {
     // Build and execute Command
     // src: http://redis.io/commands/[BLPOP|BRPOP] lists timeout
-    lists.prepend(direction == RedisInterface::PopDirection::Begin ? "BLPOP" : "BRPOP");
+    lists.prepend(direction == RedisInterface::Position::Begin ? "BLPOP" : "BRPOP");
     lists.append(QByteArray::number(timeout));
     return RedisInterface::execRedisCommand(socket, lists, 0, 0, 0, false);
 }
