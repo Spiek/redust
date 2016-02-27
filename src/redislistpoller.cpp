@@ -1,6 +1,6 @@
 #include "recotec/redislistpoller.h"
 
-RedisListPoller::RedisListPoller(RedisServer &server, QList<QByteArray> keys, RedisInterface::Position popDirection, int timeout, QObject *parent) : QObject(parent)
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, RedisInterface::Position popDirection, int timeout, QObject *parent) : QObject(parent)
 {
     // save keys in deserialized form
     this->intTimeout = timeout;
@@ -51,14 +51,14 @@ void RedisListPoller::handleResponse()
     if(!this->socket) return;
 
     // parse result and exit on fail
-    QList<QByteArray> result;
+    std::list<QByteArray> result;
     if(!RedisInterface::parseResponse(this->socket, 0, &result)) return;
 
     // if no element could be popped, timeout reached
-    if(result.count() == 1 && result.first().isNull()) emit this->timeout();
+    if(result.size() == 1 && result.front().isNull()) emit this->timeout();
 
     // otherwise inform outside world about popped element
-    else if(result.count() == 2) emit this->popped(result.first(), result.last());
+    else if(result.size() == 2) emit this->popped(result.front(), result.back());
 
     // if suspended flag is set, free the socket and don't start over
     if(this->suspended) {

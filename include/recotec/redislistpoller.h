@@ -14,7 +14,7 @@ class RedisListPoller : public QObject
 {
     Q_OBJECT
     public:
-        RedisListPoller(RedisServer &server, QList<QByteArray> lstKeys, RedisInterface::Position popDirection = RedisInterface::Position::Begin, int timeout = 0, QObject *parent = 0);
+        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, RedisInterface::Position popDirection = RedisInterface::Position::Begin, int timeout = 0, QObject *parent = 0);
         ~RedisListPoller();
         bool start();
         void stop(bool instantly = false);
@@ -23,8 +23,8 @@ class RedisListPoller : public QObject
         inline bool isRunning() { return this->socket && this->socket->isReadable(); }
 
         // getter / setter
-        inline QList<QByteArray> getKeys() { return this->lstKeys; }
-        inline void setKeys(QList<QByteArray> keys) { this->lstKeys = keys; }
+        inline std::list<QByteArray> getKeys() { return this->lstKeys; }
+        inline void setKeys(std::list<QByteArray> keys) { this->lstKeys = keys; }
         inline int getTimeout() { return this->intTimeout; }
         inline void setTimeout(int timeout) { this->intTimeout = timeout; }
 
@@ -38,7 +38,7 @@ class RedisListPoller : public QObject
     private:
         int intTimeout;
         bool suspended = false;
-        QList<QByteArray> lstKeys;
+        std::list<QByteArray> lstKeys;
         RedisInterface::Position popDirection;
         RedisServer* server = 0;
         QTcpSocket* socket = 0;

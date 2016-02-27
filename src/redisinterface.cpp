@@ -10,8 +10,8 @@ bool RedisInterface::ping(RedisServer &server, QByteArray data, bool async)
     // PING [data]
     // src: http://redis.io/commands/ping
     QByteArray res;
-    QList<QByteArray> lstCmd = { "PING" };
-    if(!data.isEmpty()) lstCmd.append(data);
+    std::list<QByteArray> lstCmd = { "PING" };
+    if(!data.isEmpty()) lstCmd.push_back(data);
     bool result = RedisInterface::execRedisCommand(server, lstCmd, async ? 0 : &res);
 
     // evaluate result
@@ -48,12 +48,12 @@ bool RedisInterface::exists(RedisServer& server, QByteArray key)
     return returnValue == "1";
 }
 
-QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
+std::list<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 {
     // Build and execute Command
     // KEYS pattern
     // src: http://redis.io/commands/KEYS
-    QList<QByteArray> keys;
+    std::list<QByteArray> keys;
     RedisInterface::execRedisCommand(server, { "KEYS", pattern }, 0, &keys);
     return keys;
 }
@@ -64,27 +64,27 @@ QList<QByteArray> RedisInterface::keys(RedisServer& server, QByteArray pattern)
 //
 int RedisInterface::push(RedisServer &server, QByteArray key, QByteArray value, RedisInterface::Position direction, bool waitForAnswer)
 {
-    return RedisInterface::push(server, key, QList<QByteArray>{value}, direction, waitForAnswer);
+    return RedisInterface::push(server, key, std::list<QByteArray>{value}, direction, waitForAnswer);
 }
 
-int RedisInterface::push(RedisServer &server, QByteArray key, QList<QByteArray> values, RedisInterface::Position direction, bool waitForAnswer)
+int RedisInterface::push(RedisServer &server, QByteArray key, std::list<QByteArray> values, RedisInterface::Position direction, bool waitForAnswer)
 {
     // Build and execute Command
     // [L|R]PUSH key value [value]...
     // src: http://redis.io/commands/lpush
     QByteArray res;
-    values.prepend(key);
-    values.prepend(direction == RedisInterface::Position::Begin ? "LPUSH" : "RPUSH");
+    values.push_front(key);
+    values.push_front(direction == RedisInterface::Position::Begin ? "LPUSH" : "RPUSH");
     RedisInterface::execRedisCommand(server, values, waitForAnswer ? &res : 0);
     return waitForAnswer ? res.toInt() : -1;
 }
 
-bool RedisInterface::bpop(QTcpSocket* socket, QList<QByteArray> lists, RedisInterface::Position direction, int timeout)
+bool RedisInterface::bpop(QTcpSocket* socket, std::list<QByteArray> lists, RedisInterface::Position direction, int timeout)
 {
     // Build and execute Command
     // src: http://redis.io/commands/[BLPOP|BRPOP] lists timeout
-    lists.prepend(direction == RedisInterface::Position::Begin ? "BLPOP" : "BRPOP");
-    lists.append(QByteArray::number(timeout));
+    lists.push_front(direction == RedisInterface::Position::Begin ? "BLPOP" : "BRPOP");
+    lists.push_back(QByteArray::number(timeout));
     return RedisInterface::execRedisCommand(socket, lists, 0, 0, 0, false);
 }
 
@@ -113,18 +113,19 @@ bool RedisInterface::hset(RedisServer& server, QByteArray list, QByteArray key, 
     return RedisInterface::execRedisCommand(server, { onlySetIfNotExists ? "HSETNX" : "HSET", list, key, value }, waitForAnswer ? &returnValue : 0);
 }
 
-bool RedisInterface::hmset(RedisServer& server, QByteArray list, QList<QByteArray> keys, QList<QByteArray> values, bool waitForAnswer)
+bool RedisInterface::hmset(RedisServer& server, QByteArray list, std::list<QByteArray> keys, std::list<QByteArray> values, bool waitForAnswer)
 {
     // Build and execute Command
     // HMSET list key value [ key value ] ...
     // src: http://redis.io/commands/hmset
-    if(keys.length() != values.length()) return false;
+    if(keys.size() != values.size()) return false;
     QByteArray returnValue;
-    QList<QByteArray> lst = { "HMSET", list };
+    std::list<QByteArray> lst = { "HMSET", list };
     auto itrKey = keys.begin();
     auto itrValue = values.begin();
     for(;itrKey != keys.end();) {
-        lst << *itrKey++ << *itrValue++;
+        lst.push_back(*itrKey++);
+        lst.push_back(*itrValue++);
     }
     return RedisInterface::execRedisCommand(server, lst, waitForAnswer ? &returnValue : 0);
 }
@@ -165,14 +166,14 @@ QByteArray RedisInterface::hget(RedisServer& server, QByteArray list, QByteArray
     return returnValue;
 }
 
-QList<QByteArray> RedisInterface::hmget(RedisServer& server, QByteArray list, QList<QByteArray> keys)
+std::list<QByteArray> RedisInterface::hmget(RedisServer& server, QByteArray list, std::list<QByteArray> keys)
 {
     // Build and execute Command
     // HMGET list key [ key ] ...
     // src: http://redis.io/commands/hmget
-    QList<QByteArray> returnValue;
-    keys.prepend(list);
-    keys.prepend("HMGET");
+    std::list<QByteArray> returnValue;
+    keys.push_front(list);
+    keys.push_front("HMGET");
     RedisInterface::execRedisCommand(server, keys, 0, &returnValue);
     return returnValue;
 }
@@ -194,7 +195,7 @@ int RedisInterface::hstrlen(RedisServer& server, QByteArray list, QByteArray key
     return returnValue.toInt();
 }
 
-void RedisInterface::hkeys(RedisServer& server, QByteArray list, QList<QByteArray>& result)
+void RedisInterface::hkeys(RedisServer& server, QByteArray list, std::list<QByteArray>& result)
 {
     // Build and execute Command
     // HKEYS list
@@ -202,7 +203,7 @@ void RedisInterface::hkeys(RedisServer& server, QByteArray list, QList<QByteArra
     RedisInterface::execRedisCommand(server, { "HKEYS", list }, 0, &result);
 }
 
-void RedisInterface::hvals(RedisServer& server, QByteArray list, QList<QByteArray> &result)
+void RedisInterface::hvals(RedisServer& server, QByteArray list, std::list<QByteArray> &result)
 {
     // Build and execute Command
     // HVALS list
@@ -210,7 +211,7 @@ void RedisInterface::hvals(RedisServer& server, QByteArray list, QList<QByteArra
     RedisInterface::execRedisCommand(server, { "HVALS", list }, 0, &result);
 }
 
-void RedisInterface::hgetall(RedisServer& server, QByteArray list, QList<QByteArray>& result)
+void RedisInterface::hgetall(RedisServer& server, QByteArray list, std::list<QByteArray>& result)
 {
     // Build and execute Command
     // HGETALL list
@@ -221,24 +222,28 @@ void RedisInterface::hgetall(RedisServer& server, QByteArray list, QList<QByteAr
 void RedisInterface::hgetall(RedisServer& server, QByteArray list, QMap<QByteArray, QByteArray>& result)
 {
     // get data
-    QList<QByteArray> elements;
+    std::list<QByteArray> elements;
     RedisInterface::hgetall(server, list, elements);
 
     // copy elements to qmap
-    for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
-        result.insert(*itr, *(itr + 1));
+    for(auto itr = elements.begin(); itr != elements.end();) {
+        QByteArray key = *itr++;
+        QByteArray value = *itr++;
+        result.insert(key, value);
     }
 }
 
 void RedisInterface::hgetall(RedisServer& server, QByteArray list, QHash<QByteArray, QByteArray>& result)
 {
     // get data
-    QList<QByteArray> elements;
+    std::list<QByteArray> elements;
     RedisInterface::hgetall(server, list, elements);
 
     // copy elements to qmap
-    for(auto itr = elements.begin(); itr != elements.end(); itr += 2) {
-        result.insert(*itr, *(itr + 1));
+    for(auto itr = elements.begin(); itr != elements.end();) {
+        QByteArray key = *itr++;
+        QByteArray value = *itr++;
+        result.insert(key, value);
     }
 }
 
@@ -247,12 +252,12 @@ void RedisInterface::hgetall(RedisServer& server, QByteArray list, QHash<QByteAr
 // Scan Redis Functions
 //
 
-void RedisInterface::scan(RedisServer& server, QByteArray list, QList<QByteArray>* resultKeys, QList<QByteArray>* resultValues, int count, int pos, int* newPos)
+void RedisInterface::scan(RedisServer& server, QByteArray list, std::list<QByteArray>* resultKeys, std::list<QByteArray>* resultValues, int count, int pos, int* newPos)
 {
     return RedisInterface::simplifyHScan(server, list, 0, resultKeys, resultValues, 0, count, pos, newPos);
 }
 
-void RedisInterface::scan(RedisServer& server, QByteArray list, QList<QByteArray>& keyValues, int count, int pos, int* newPos)
+void RedisInterface::scan(RedisServer& server, QByteArray list, std::list<QByteArray>& keyValues, int count, int pos, int* newPos)
 {
     return RedisInterface::simplifyHScan(server, list, &keyValues, 0, 0, 0, count, pos, newPos);
 }
@@ -267,7 +272,7 @@ void RedisInterface::scan(RedisServer& server, QByteArray list, QMap<QByteArray,
 // command simplifier
 //
 
-void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<QByteArray> *lstKeyValues, QList<QByteArray>* keys, QList<QByteArray>* values, QMap<QByteArray, QByteArray>* keyValues, int count, int pos, int* newPos)
+void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, std::list<QByteArray> *lstKeyValues, std::list<QByteArray>* keys, std::list<QByteArray>* values, QMap<QByteArray, QByteArray>* keyValues, int count, int pos, int* newPos)
 {
     // if caller don't want any data, exit
     if(!lstKeyValues && !keys && !values && !keyValues) return;
@@ -275,31 +280,34 @@ void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<Q
     // Build and exec following command
     // HSCAN list cursor COUNT count
     // src: http://redis.io/commands/scan
-    QList<QList<QByteArray>> returnValue;
+    std::list<std::list<QByteArray>> returnValue;
     if(!RedisInterface::execRedisCommand(server, {"HSCAN", list, QString::number(pos).toLocal8Bit(), "COUNT", QString::number(count).toLocal8Bit() }, 0, 0, &returnValue) ||
-       returnValue.length() != 2) {
+       returnValue.size() != 2) {
             return;
     }
 
     // set new pos if wanted
-    QByteArray posScan = returnValue.takeFirst().value(0);
+    QByteArray posScan = returnValue.front().front();
+    returnValue.pop_front();
     if(newPos) *newPos = atoi(posScan.data());
 
     // copy elements to given data
-    QList<QByteArray>& elements = returnValue.first();
+    std::list<QByteArray>& elements = returnValue.front();
     for(auto itr = elements.begin(); itr != elements.end();) {
+        // simplify key value
+        QByteArray key = *itr++;
+        QByteArray value = *itr++;
+
         // save key if wanted
-        if(keys) keys->append(*itr);
-        if(lstKeyValues) lstKeyValues->append(*itr);
-        itr++;
+        if(keys) keys->push_back(key);
+        if(lstKeyValues) lstKeyValues->push_back(key);
 
         // save value if wanted
-        if(values) values->append(*itr);
-        if(lstKeyValues) lstKeyValues->append(*itr);
+        if(values) values->push_back(value);
+        if(lstKeyValues) lstKeyValues->push_back(value);
 
         // save keyvalues
-        if(keyValues) keyValues->insert(*(itr - 1), *itr);
-        itr++;
+        if(keyValues) keyValues->insert(key, value);
     }
 }
 
@@ -307,7 +315,7 @@ void RedisInterface::simplifyHScan(RedisServer& server, QByteArray list, QList<Q
 //
 // Private helpers
 //
-bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray)
+bool RedisInterface::execRedisCommand(RedisServer& server, std::list<QByteArray> cmd, QByteArray* result, std::list<QByteArray>* resultArray, std::list<std::list<QByteArray> > *result2dArray)
 {
     bool waitForAnswer = result || resultArray || result2dArray;
     QTcpSocket* socket = server.requestConnection(waitForAnswer ? RedisServer::ConnectionType::ReadWrite :
@@ -315,7 +323,7 @@ bool RedisInterface::execRedisCommand(RedisServer& server, QList<QByteArray> cmd
     return RedisInterface::execRedisCommand(socket, cmd, result, resultArray, result2dArray, waitForAnswer);
 }
 
-bool RedisInterface::execRedisCommand(QTcpSocket *socket, QList<QByteArray> cmd, QByteArray* result, QList<QByteArray>* resultArray, QList<QList<QByteArray> > *result2dArray, bool waitForAnswer)
+bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> cmd, QByteArray* result, std::list<QByteArray>* resultArray, std::list<std::list<QByteArray> > *result2dArray, bool waitForAnswer)
 {
     // check socket
     if(!socket) return false;
@@ -337,7 +345,7 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, QList<QByteArray> cmd,
     }
 
     // 3. write RESP request to socket
-    socket->write(contentOriginPos, content - contentOriginPos);
+    socket->write(QByteArray::fromRawData(contentOriginPos, content - contentOriginPos));
     free(contentOriginPos);
 
     // if we don't have to wait for an answer return true, otherwise parse return value and return the parsing result
@@ -349,7 +357,7 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, QList<QByteArray> cmd,
 // Public helpers
 //
 
-bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList<QByteArray> *resultArray, QList<QList<QByteArray> > *result2dArray)
+bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, std::list<QByteArray> *resultArray, std::list<std::list<QByteArray> > *result2dArray)
 {
     // check params
     if(!socket || !socket->isReadable() || (!result && !resultArray && !result2dArray)) return false;
@@ -370,7 +378,7 @@ bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList
     auto readSegement = [&socket, &data](char** rawData, int segmentLength = 0) {
         // loop until we have enough data to parse the next segment
         char* protoSegmentEnd = 0;
-        while((!segmentLength && !(protoSegmentEnd = strstr(*rawData, "\n"))) || (segmentLength && data.length() - (*rawData - data.data()) < segmentLength)) {
+        while((!segmentLength && !(protoSegmentEnd = strstr(*rawData, "\n"))) || (segmentLength && data.size() - (*rawData - data.data()) < segmentLength)) {
             // remove allready parsed data from cache
             data.remove(0, *rawData - data.data());
 
@@ -422,7 +430,7 @@ bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList
     // handle Array(s)
     if(respDataType == '*') {
         rawData--;
-        QList<QByteArray>* currentArray = 0;
+        std::list<QByteArray>* currentArray = 0;
         int elementCount = 0;
 
         // loop until we have parsed all segments
@@ -443,11 +451,11 @@ bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList
                 // if resultArray is present, save first array in resultArray and all others (if present) in result2dArray
                 // if no result Array is present and result2dArray is present, create a new array element in it
                 currentArray = resultArray && firstRun ? resultArray :
-                               result2dArray ? &*result2dArray->insert(result2dArray->end(), QList<QByteArray>()) : 0;
+                               result2dArray ? &*result2dArray->insert(result2dArray->end(), std::list<QByteArray>()) : 0;
 
                 // handle null multi bulk by creating single null value in array and exit loop
                 if(firstRun && length == -1) {
-                    if(currentArray) currentArray->append(QByteArray());
+                    if(currentArray) currentArray->push_back(QByteArray());
                     break;
                 }
                 if(firstRun) firstRun = false;
@@ -455,13 +463,13 @@ bool RedisInterface::parseResponse(QTcpSocket* socket, QByteArray *result, QList
 
             // if we have a null bulk string, so create a null byte array
             else if(length == -1) {
-                if(currentArray) currentArray->append(QByteArray());
+                if(currentArray) currentArray->push_back(QByteArray());
             }
 
             // otherwise we have normal bulk string, so parse it
             else {
                 protoSegmentNext = readSegement(&rawData, length + 2);
-                if(currentArray) currentArray->append(QByteArray(rawData, length));
+                if(currentArray) currentArray->push_back(QByteArray(rawData, length));
                 rawData = protoSegmentNext;
             }
         } while(--elementCount);
