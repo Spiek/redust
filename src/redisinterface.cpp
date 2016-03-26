@@ -345,11 +345,21 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> 
     // 2. build RESP request
     char* contentOriginPos = (char*)malloc(size);
     char* content = contentOriginPos;
-    content += sprintf(content, "*%i\r\n", cmd.size());
+
+    // build packet
+    *content++ = '*';
+    itoa(cmd.size(), content, 10);
+    content += (int)floor(log10(abs(cmd.size()))) + 1;
+    content = (char*)mempcpy(content, "\r\n", 2);
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
-        content += sprintf(content, "$%i\r\n", itr->isEmpty() ? -1 : itr->length());
-        content = (char*)mempcpy(content, itr->data(), itr->length());
+        *content++ = '$';
+        itoa(itr->isNull() ? -1 : itr->length(), content, 10);
+        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : (int)floor(log10(abs(itr->length()))) + 1;
         content = (char*)mempcpy(content, "\r\n", 2);
+        if(!itr->isNull()) {
+            content = (char*)mempcpy(content, itr->data(), itr->length());
+            content = (char*)mempcpy(content, "\r\n", 2);
+        }
     }
 
     // 3. write RESP request to socket
