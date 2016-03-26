@@ -72,7 +72,7 @@ class RedisHash
             {
                 return this->list == other.list &&
                        this->pos == other.pos &&
-                       this->queueElements.length() == other.queueElements.length();
+                       this->queueElements.size() == other.queueElements.size();
             }
             bool operator !=(iterator other)
             {
@@ -127,8 +127,10 @@ class RedisHash
                     if(!this->refillQueue()) return *this;
 
                     // save current key and value
-                    this->currentKey = this->queueElements.takeFirst();
-                    this->currentValue = this->queueElements.takeFirst();
+                    this->currentKey = this->queueElements.front();
+                    this->queueElements.pop_front();
+                    this->currentValue = this->queueElements.front();
+                    this->queueElements.pop_front();
                 }
                 return *this;
             }
@@ -136,7 +138,7 @@ class RedisHash
             bool refillQueue()
             {
                 // if queue is not empty, don't refill
-                if(!this->queueElements.isEmpty()) return true;
+                if(this->queueElements.size() > 0) return true;
 
                 // if we reach the end of the redis position, set current pos to -1 and exit
                 if(this->posRedis == 0) this->pos = -1;
@@ -152,7 +154,7 @@ class RedisHash
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
                 //       if this is the case then we call us again so that this iterator is set to end
-                return this->queueElements.isEmpty() ? this->refillQueue() : true;
+                return this->queueElements.size() > 0 ? this->refillQueue() : true;
             }
 
             void loadEntry(bool key, bool value)
@@ -174,7 +176,7 @@ class RedisHash
             int cacheSize;
             int posRedis = -1;
             int pos;
-            QList<QByteArray> queueElements;
+            std::list<QByteArray> queueElements;
             QByteArray currentKey;
             QByteArray currentValue;
             NORM2VALUE(Key) currentKeyVal;
@@ -311,7 +313,7 @@ class RedisHash
             QList<NORM2VALUE(Key)> list;
 
             // if fetch chunk size is smaller or equal 0, so exec hkeys
-            QList<QByteArray> elements;
+            std::list<QByteArray> elements;
             if(fetchChunkSize <= 0) RedisInterface::hkeys(*this->redisServer, this->list, elements);
 
             // otherwise get keys using scan
@@ -336,7 +338,7 @@ class RedisHash
             QList<NORM2VALUE(Value)> list;
 
             // if fetch chunk size is smaller or equal 0, so exec hvals
-            QList<QByteArray> elements;
+            std::list<QByteArray> elements;
             if(fetchChunkSize <= 0) RedisInterface::hvals(*this->redisServer, this->list, elements);
 
             // otherwise get values using scan
@@ -358,16 +360,17 @@ class RedisHash
         QList<NORM2VALUE(Value)> values(QList<NORM2VALUE(Key)> keys)
         {
             // serialize all keys to QBytearray list and execute hmget command
-            QList<QByteArray> sKeys;
+            std::list<QByteArray> sKeys;
             for(auto itr = keys.begin(); itr != keys.end(); itr++) {
                 sKeys << TypeSerializer<Key>::serialize(*itr, this->binarizeKey);
             }
-            QList<QByteArray> sValues = RedisInterface::hmget(*this->redisServer, this->list, sKeys);
+            std::list<QByteArray> sValues = RedisInterface::hmget(*this->redisServer, this->list, sKeys);
 
             // deserialize values to Value Type and append it to values list
             QList<NORM2VALUE(Value)> values;
-            while(!sValues.isEmpty()) {
-                values.append(TypeSerializer<Value>::deserialize(sValues.takeFirst(), this->binarizeValue));
+            while(sValues.size() > 0) {
+                values.append(TypeSerializer<Value>::deserialize(sValues.front(), this->binarizeValue));
+                sValues.pop_front();
             }
             return values;
         }
@@ -378,7 +381,7 @@ class RedisHash
             QMap<NORM2VALUE(Key),NORM2VALUE(Value)> map;
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
-            QList<QByteArray> elements;
+            std::list<QByteArray> elements;
             if(fetchChunkSize <= 0) RedisInterface::hgetall(*this->redisServer, this->list, elements);
 
             // otherwise get key values using scan
@@ -389,8 +392,10 @@ class RedisHash
             }
 
             // deserialize the data
-            for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
-                map.insert(TypeSerializer<Key>::deserialize(*itr, this->binarizeKey), TypeSerializer<Value>::deserialize(*(itr + 1), this->binarizeValue));
+            for(auto itr = elements.begin(); itr != elements.end();) {
+                QByteArray key = *itr++;
+                QByteArray value = *itr++;
+                map.insert(TypeSerializer<Key>::deserialize(key, this->binarizeKey), TypeSerializer<Value>::deserialize(value, this->binarizeValue));
             }
 
             // return map
@@ -403,7 +408,7 @@ class RedisHash
             QHash<NORM2VALUE(Key),NORM2VALUE(Value)> hash;
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
-            QList<QByteArray> elements;
+            std::list<QByteArray> elements;
             if(fetchChunkSize <= 0) RedisInterface::hgetall(*this->redisServer, this->list, elements);
 
             // otherwise get key values using scan
@@ -414,8 +419,10 @@ class RedisHash
             }
 
             // deserialize the data
-            for(auto itr = elements.begin(); itr != elements.end();itr += 2) {
-                hash.insert(TypeSerializer<Key>::deserialize(*itr, this->binarizeKey), TypeSerializer<Value>::deserialize(*(itr + 1), this->binarizeValue));
+            for(auto itr = elements.begin(); itr != elements.end();) {
+                QByteArray key = *itr++;
+                QByteArray value = *itr++;
+                hash.insert(TypeSerializer<Key>::deserialize(key, this->binarizeKey), TypeSerializer<Value>::deserialize(value, this->binarizeValue));
             }
 
             // return hash
