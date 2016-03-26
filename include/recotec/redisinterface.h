@@ -30,6 +30,7 @@ class RedisInterface
         static int push(RedisServer& server, QByteArray key, QByteArray value, RedisInterface::Position direction = Position::Begin, bool waitForAnswer = false);
         static int push(RedisServer& server, QByteArray key, std::list<QByteArray> values, RedisInterface::Position direction = Position::Begin, bool waitForAnswer = false);
         static bool bpop(QTcpSocket *socket, std::list<QByteArray> lists, RedisInterface::Position direction = Position::Begin, int timeout = 0);
+        static int llen(RedisServer& server, QByteArray key);
 
         // Hash Redis Functions
         static int hlen(RedisServer& server, QByteArray list);

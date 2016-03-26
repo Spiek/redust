@@ -88,6 +88,14 @@ bool RedisInterface::bpop(QTcpSocket* socket, std::list<QByteArray> lists, Redis
     return RedisInterface::execRedisCommand(socket, lists, 0, 0, 0, false);
 }
 
+int RedisInterface::llen(RedisServer &server, QByteArray key)
+{
+    // Build and execute Command
+    // LLEN key
+    // src: http://redis.io/commands/llen
+    QByteArray res;
+    return !RedisInterface::execRedisCommand(server, {"LLEN", key}, &res) ? -1 : res.toInt();
+}
 
 
 //
