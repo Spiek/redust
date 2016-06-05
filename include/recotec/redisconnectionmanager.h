@@ -14,7 +14,7 @@ class RedisServer
             ReadWrite,
             Blocked
         };
-        RedisServer(QString redisServer, qint16 redisPort);
+        RedisServer(QString redisServer = "localhost", qint16 redisPort = 6379);
         QTcpSocket* requestConnection(RedisServer::ConnectionType type);
         void freeBlockedConnection(QTcpSocket *socket);
 

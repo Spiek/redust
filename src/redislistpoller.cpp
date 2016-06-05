@@ -1,6 +1,6 @@
 #include "recotec/redislistpoller.h"
 
-RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, RedisInterface::Position popDirection, int timeout, QObject *parent) : QObject(parent)
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, RedisInterface::Position popDirection, QObject *parent) : QObject(parent)
 {
     // save keys in deserialized form
     this->intTimeout = timeout;
