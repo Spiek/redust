@@ -360,12 +360,12 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> 
     // build packet
     *content++ = '*';
     itoa(cmd.size(), content, 10);
-    content += (int)floor(log10(abs(cmd.size()))) + 1;
+    content += RedisInterface::numPlaces(cmd.size());
     content = (char*)mempcpy(content, "\r\n", 2);
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
         *content++ = '$';
         itoa(itr->isNull() ? -1 : itr->length(), content, 10);
-        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : (int)floor(log10(abs(itr->length()))) + 1;
+        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : RedisInterface::numPlaces(cmd.size());
         content = (char*)mempcpy(content, "\r\n", 2);
         if(!itr->isNull()) {
             content = (char*)mempcpy(content, itr->data(), itr->length());
