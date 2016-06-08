@@ -203,7 +203,7 @@ void TestRedisHash::redispoller()
     int pushValuesCount = GENINTRANDRANGE(2234,24543);
 
     // init poller and signal spyer
-    RedisListPoller poller(redisServer, {"hallo", "test"}, RedisInterface::Position::Begin, 1);
+    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisInterface::Position::Begin);
     QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
     poller.start();
 
