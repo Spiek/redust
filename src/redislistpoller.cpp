@@ -51,14 +51,14 @@ void RedisListPoller::handleResponse()
     if(!this->socket) return;
 
     // parse result and exit on fail
-    std::list<QByteArray> result;
-    if(!RedisInterface::parseResponse(this->socket, 0, &result)) return;
+    RedisInterface::RedisData result = RedisInterface::parseResponse(this->socket);
+    if(result.type == RedisInterface::RedisData::Type::Error) return;
 
     // if no element could be popped, timeout reached
-    if(result.size() == 1 && result.front().isNull()) emit this->timeout();
+    if(result.array.size() == 1 && result.array.front().isNull()) emit this->timeout();
 
     // otherwise inform outside world about popped element
-    else if(result.size() == 2) emit this->popped(result.front(), result.back());
+    else if(result.array.size() == 2) emit this->popped(result.array.front(), result.array.back());
 
     // if suspended flag is set, free the socket and don't start over
     if(this->suspended) {

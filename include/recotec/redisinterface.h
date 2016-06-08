@@ -13,6 +13,27 @@
 class RedisInterface
 {
     public:
+        struct RedisData
+        {
+            enum class Type {
+                Unknown = 0,
+                SimpleString = 1,
+                Error = 2,
+                Integer = 3,
+
+                BulkString = 4,
+                Array = 5,
+                ArrayList = 6
+            } type;
+            QByteArray string;
+            QString errorString;
+            int integer;
+            std::list<QByteArray> array;
+            std::list<std::list<QByteArray>> arrayList;
+            inline RedisData(RedisData::Type type) : type(type) { }
+            inline RedisData(QString errorString) : type(RedisData::Type::Error), errorString(errorString) { }
+        };
+
         enum class Position {
             Begin,
             End
@@ -52,16 +73,16 @@ class RedisInterface
         static void scan(RedisServer& server, QByteArray list, std::list<QByteArray>& keyValues, int count = 100, int pos = 0, int *newPos = 0);
         static void scan(RedisServer& server, QByteArray list, QMap<QByteArray, QByteArray> &keyValues, int count = 100, int pos = 0, int *newPos = 0);
 
-        // Public helpers
-        static bool parseResponse(QTcpSocket* socket, QByteArray* result = 0, std::list<QByteArray> *resultArray = 0, std::list<std::list<QByteArray>>* result2dArray = 0);
+        // Redis Command Execution Helper
+        static RedisData execRedisCommandResult(RedisServer& server, std::list<QByteArray> cmd);
+        static RedisData execRedisCommandResult(QTcpSocket* socket, std::list<QByteArray> cmd);
+        static bool execRedisCommand(RedisServer& server, std::list<QByteArray> cmd, bool writeOnly);
+        static bool execRedisCommand(QTcpSocket* socket, std::list<QByteArray> cmd);
+        static RedisData parseResponse(QTcpSocket* socket);
 
     private:
         // command simplifier
         static void simplifyHScan(RedisServer& server, QByteArray list, std::list<QByteArray> *lstKeyValues, std::list<QByteArray> *keys, std::list<QByteArray> *values, QMap<QByteArray, QByteArray> *keyValues, int count, int pos, int *newPos);
-
-        // Private helpers
-        static bool execRedisCommand(RedisServer& server, std::list<QByteArray> cmd, QByteArray* result = 0, std::list<QByteArray> *resultArray = 0, std::list<std::list<QByteArray>>* result2dArray = 0);
-        static bool execRedisCommand(QTcpSocket* socket, std::list<QByteArray> cmd, QByteArray* result = 0, std::list<QByteArray> *resultArray = 0, std::list<std::list<QByteArray>>* result2dArray = 0, bool waitForAnswer = true);
 };
 
 #endif // REDISMAPPRIVATE_H
