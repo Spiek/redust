@@ -354,18 +354,18 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> 
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) size += 15 + itr->length();
 
     // 2. build RESP request
-    char* contentOriginPos = (char*)malloc(size);
+    char contentOriginPos[size];
     char* content = contentOriginPos;
 
     // build packet
     *content++ = '*';
     itoa(cmd.size(), content, 10);
-    content += RedisInterface::numPlaces(cmd.size());
+    content += RedisInterface::numIntPlaces(cmd.size());
     content = (char*)mempcpy(content, "\r\n", 2);
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
         *content++ = '$';
         itoa(itr->isNull() ? -1 : itr->length(), content, 10);
-        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : RedisInterface::numPlaces(cmd.size());
+        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : RedisInterface::numIntPlaces(cmd.size());
         content = (char*)mempcpy(content, "\r\n", 2);
         if(!itr->isNull()) {
             content = (char*)mempcpy(content, itr->data(), itr->length());
@@ -375,7 +375,6 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> 
 
     // 3. write RESP request to socket
     socket->write(QByteArray::fromRawData(contentOriginPos, content - contentOriginPos));
-    free(contentOriginPos);
 
     // everything okay
     return true;

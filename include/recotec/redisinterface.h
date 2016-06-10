@@ -86,7 +86,7 @@ class RedisInterface
 
         // very fast implementation of integer places counting
         // src: http://stackoverflow.com/a/1068937
-        static inline int numPlaces(int n) {
+        static inline int numIntPlaces(int n) {
             if (n < 0) n = (n == INT_MIN) ? INT_MAX : -n;
             if (n < 10) return 1;
             if (n < 100) return 2;
