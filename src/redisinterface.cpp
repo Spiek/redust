@@ -365,7 +365,7 @@ bool RedisInterface::execRedisCommand(QTcpSocket *socket, std::list<QByteArray> 
     for(auto itr = cmd.begin(); itr != cmd.end(); itr++) {
         *content++ = '$';
         itoa(itr->isNull() ? -1 : itr->length(), content, 10);
-        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : RedisInterface::numIntPlaces(cmd.size());
+        content += (int)itr->isNull() ? 2 : itr->isEmpty() ? 1 : RedisInterface::numIntPlaces(itr->length());
         content = (char*)mempcpy(content, "\r\n", 2);
         if(!itr->isNull()) {
             content = (char*)mempcpy(content, itr->data(), itr->length());
