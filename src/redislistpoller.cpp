@@ -20,12 +20,8 @@ bool RedisListPoller::start()
     // reset suspend
     this->suspended = false;
 
-    // acquire socket
-    if(!this->socket) {
-        this->socket = this->server->requestConnection(RedisServer::ConnectionType::Blocked);
-        if(this->socket) this->connect(this->socket, &QTcpSocket::readyRead, this, &RedisListPoller::handleResponse);
-        else return false;
-    }
+    // acquire socket, and exit on fail
+    if(!this->acquireSocket()) return false;
 
     // run blpop and return result
     return RedisInterface::bpop(this->socket, this->lstKeys, this->popDirection, this->intTimeout);
@@ -33,16 +29,11 @@ bool RedisListPoller::start()
 
 void RedisListPoller::stop(bool instantly)
 {
-    // to stop instantly we have to kill the socket
-    if(instantly) {
-        if(socket) this->socket->deleteLater();
-        this->socket = 0;
-    }
+    // to stop instantly we have to free the socket
+    if(instantly) this->releaseSocket();
 
     // otherwise we set the suspended flag so that after the next received data we don't start over
-    else {
-        this->suspended = true;
-    }
+    else this->suspended = true;
 }
 
 void RedisListPoller::handleResponse()
@@ -60,13 +51,34 @@ void RedisListPoller::handleResponse()
     // otherwise inform outside world about popped element
     else if(result.array.size() == 2) emit this->popped(result.array.front(), result.array.back());
 
-    // if suspended flag is set, free the socket and don't start over
-    if(this->suspended) {
-        this->disconnect(this->socket);
-        this->server->freeBlockedConnection(this->socket);
-        this->socket = 0;
-    }
+    // if suspended flag is set, free the socket instantly and don't start over
+    if(this->suspended) this->releaseSocket();
 
     // otherwise just start over
     else this->start();
+}
+
+bool RedisListPoller::acquireSocket()
+{
+    // if have allready an acquired socket, exit
+    if(this->socket) return true;
+
+    // otherwise acquire one (and return false on error)
+    this->socket = this->server->requestConnection(RedisServer::ConnectionType::Blocked);
+    if(this->socket) this->connect(this->socket, &QTcpSocket::readyRead, this, &RedisListPoller::handleResponse);
+    else return false;
+
+    // socket was successfull acquired
+    return true;
+}
+
+void RedisListPoller::releaseSocket()
+{
+    // exit if we have no socket to release
+    if(!this->socket) return;
+
+    // release socket
+    this->disconnect(this->socket);
+    this->server->freeBlockedConnection(this->socket);
+    this->socket = 0;
 }

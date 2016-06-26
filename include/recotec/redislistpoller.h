@@ -20,7 +20,7 @@ class RedisListPoller : public QObject
         void stop(bool instantly = false);
 
         // check functions
-        inline bool isRunning() { return this->socket && this->socket->isReadable(); }
+        inline bool isRunning() { return !this->suspended && this->socket && this->socket->isReadable(); }
 
         // getter / setter
         inline std::list<QByteArray> getKeys() { return this->lstKeys; }
@@ -34,6 +34,8 @@ class RedisListPoller : public QObject
 
     private slots:
         void handleResponse();
+        bool acquireSocket();
+        void releaseSocket();
 
     private:
         int intTimeout;
