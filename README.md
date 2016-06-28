@@ -1,11 +1,12 @@
-# RedUST-qt - Redis Usebitlity Simplifier ToolKit for Qt
+# Redis Usability Simplifier ToolKit for Qt
 
-RedUST provides some usebitlity simplifier for accessing redis via Qt.
+RedUST provides some usability simplifier for accessing redis via Qt.
 
 Philosophy:  
 The Idea is to provide a very easy high level api to simplify atomic tasks using a redis server.   
 All tools provided by RedUST work directly with redis, so they work atomic accross threads, applications and networks.  
 All data becomes accessed/changed/deleted direct in redis on demand.
+
 ----------
 
 ## Redis Templates:
