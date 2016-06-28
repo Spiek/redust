@@ -7,8 +7,8 @@
 #include "typeserializer.h"
 #include "redisinterface.h"
 
-// recotec
-#include "recotec/redisconnectionmanager.h"
+// redust
+#include "redust/redisserver.h"
 
 class RedisListPoller : public QObject
 {

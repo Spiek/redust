@@ -1,8 +1,8 @@
 #include <QtTest/QtTest>
 
-#include <recotec/redishash.h>
-#include <recotec/redisconnectionmanager.h>
-#include "recotec/redislistpoller.h"
+#include "redust/redishash.h"
+#include "redust/redisserver.h"
+#include "redust/redislistpoller.h"
 
 // const variables
 #define KEYNAMESPACE "RedisTemplates_TestCase"
@@ -203,7 +203,7 @@ void TestRedisHash::redispoller()
     int pushValuesCount = GENINTRANDRANGE(2234,24543);
 
     // init poller and signal spyer
-    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisInterface::Position::Begin);
+    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisListPoller::PollTimeType::UntilTimeout, RedisInterface::Position::Begin);
     QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
     poller.start();
 
@@ -219,7 +219,7 @@ void TestRedisHash::redispoller()
 
     // wait until timeout reached
     QEventLoop loop;
-    loop.connect(&poller, SIGNAL(timeout()), &loop, SLOT(quit())),
+    loop.connect(&poller, SIGNAL(timeoutReached()), &loop, SLOT(quit())),
     loop.exec();
 
     // check return code
