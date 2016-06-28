@@ -1,39 +1,29 @@
-## ReCoTeC - Redis Container Templates for C++
+# RedUST-qt - Redis Usebitlity Simplifier ToolKit for Qt
 
-ReCoTeC provides easy plattform intependant access for Qt-C++ applications   
-to access data stored in Redis using C++\-Container-Class-Templates.   
-All Template Classes are acting as direct proxies to Redis, so nothing is saved or processed locally.   
+RedUST provides some usebitlity simplifier for accessing redis via Qt.
 
-### Supported Types
-ReCoTeC are able to handle the following types as Key or Value type:   
+Philosophy:  
+The Idea is to provide a very easy high level api to simplify atomic tasks using a redis server.   
+All tools provided by RedUST work directly with redis, so they work atomic accross threads, applications and networks.  
+All data becomes accessed/changed/deleted direct in redis on demand.
+----------
+
+## Redis Templates:
+Redis Templates are simplify the access to redis, by providing easy to use template classes.  
+All Redis Templates are able to handle the following Template types as Key or Value type:
+
  - All Types which QVariant is able from/to serialize to QByteArray
  - All classes which inherits from google::protobuf::Message
- - Integral Types are able to become serialized into binary or string format
+ - All Integral Types are able to become serialized into binary or string format
 
-### Available Container Types
-ReCoTeC currently supports the following container types:
- - RedisHash< Key, Value > - Hash-table-based dictionary
-	 - act as [Redis hash][redis-hashes-explained]
-	 - reimplement all possible public function signatures of [QHash][qhash-public-signature]
-	 - O(1) lookups on key (by redis)
-	 - unsorted
-
-### How to compile the library?
-**Static:**  
-Add to your Project file:
-```qmake
-include(recotec.pri)
-```
-**Dynamic:**  
-* qmake recotec.pro
-* make
-* make install
-* add the following to your pro file:
-```qmake
-LIBS += -lrecotec
-```
-### How to use?
-Here an example use case:
+### RedisHash< Key, Value > - Hash-table-based dictionary
+The following characteristics apply:
+ - get/set all data in a [Redis hash][redis-hashes-explained] in the redis server
+ - reimplement all possible public function signatures of [QHash][qhash-public-signature]
+ - O(1) lookups on key (by redis)
+ - unsorted
+ 
+Example:
 ```c++
 #include <QString>
 #include <QDebug>
@@ -41,20 +31,19 @@ Here an example use case:
 
 int main()
 {
-    // add redis connection
-    RedisConnectionManager::addConnection("redis", "127.0.0.1", 6379);
+    // create redis connection
+    RedisServer server("127.0.0.1", 6379);
 
-    // create a redis hash which uses the "redis" connection pool
-    // without trying to binarize the key or the value
-    RedisHash<qint16, QString> rhash("MYREDISKEY", false, false, "redis");
+    // create a redis hash with qint16 type as key, without trying to binarize the key or the value
+    RedisHash<qint16, QString> rhash(server, "MYREDISKEY", false, false);
 
     // insert values
     rhash.insert(123, "This is a Test Insert 1");
     rhash.insert(956, "This is a Test Insert 2");
 
     // get values
-    qDebug("%s", qPrintable(rhash.value(123));
-    qDebug("%s", qPrintable(rhash.value(956));
+    qDebug("%s", qPrintable(rhash.value(123)));
+    qDebug("%s", qPrintable(rhash.value(956)));
 
     // c++11 iteration
     qDebug("c++11 Iteration");
@@ -75,7 +64,7 @@ int main()
     qDebug() << rhash.count();
 
     // take element
-    qDebug("%s", qPrintable(rhash.take(956));
+    qDebug("%s", qPrintable(rhash.take(956)));
 }
 ```
 Prints:
@@ -109,9 +98,95 @@ HLEN | MYREDISKEY |
 HGET | MYREDISKEY | 956
 HDEL | MYREDISKEY | 956
 
+----------
+
+## Redis Tools:
+The Redis Tools gives you some tools, to simplify common tasks.
+
+### RedisListPoller
+The Redis list poller provide a async [BLPOP][blpop-explained] or [BRPOP][brpop-explained] for new elements in giving lists.  
+As soon as redis send an element back to the client the class emit the popped()-Signal with the popped element,  
+or the emit the timeout()-Signal (if timeout reached).
+
+The RedisListPoller works directly with redis, so it works atomic accross thread, applications and networks.
+
+A possible use Case:  
+The RedisListPoller can be used to provide multiple application atomic (in a round robin way) with events.
+
+Example:   
+```c++
+#include <QCoreApplication>
+#include <QString>
+#include <QDebug>
+#include <recotec/redislistpoller.h>
+
+int main()
+{
+    // init qt application
+    QCoreApplication a(argc, argv);
+    
+    // create redis connection
+    RedisServer server("127.0.0.1", 6379);
+    
+    // push data into redis lists
+    // Note: we force a syncron execution here because we want that redis insert the data before we start polling!
+    RedisInterface::push(server, "zuzu", {"bla", "blub"}, RedisInterface::Position::Begin, true);
+    RedisInterface::push(server, "test", {"bla", "blub"}, RedisInterface::Position::End, true);
+    
+    // start list poller for lists test and zuzu with a timeout of 1 second until timeout reached
+    RedisListPoller listPoller(server, {"test", "zuzu"}, 1, RedisListPoller::RunLevel::UntilTimeout);
+    QObject::connect(&listPoller, &RedisListPoller::popped, [](QByteArray list, QByteArray value) {
+        qDebug("Popped %s.%s", qPrintable(list), qPrintable(value));
+    });
+    listPoller.start();
+    
+    // start event loop
+    a.exec();
+}
+```
+Prints:
+```
+Popped test.bla
+Popped test.blub
+Popped zuzu.blub
+Popped zuzu.bla
+```
+... and generates the following Redis Command sequence:
+
+Command  | Parameter 1 | Parameter 2 | Parameter 3
+:-------- | :------- | :--- | :--- 
+LPUSH | zuzu | bla | blub
+RPUSH | test | bla | blub
+BLPOP | test | zuzu | 1
+BLPOP | test | zuzu | 1
+BLPOP | test | zuzu | 1
+BLPOP | test | zuzu | 1
+BLPOP | test | zuzu | 1
+----------
+----------
+
+### How to compile the library?
+**Static:**  
+Add to your Project file:
+```qmake
+include(recotec.pri)
+```
+**Dynamic:**  
+```
+qmake recotec.pro
+make
+make install
+```
+add the following to your pro file:
+```qmake
+LIBS += -lrecotec
+```
+
+
 
 [//]: # 
 
 [redis-hashes-explained]: <http://redis.io/topics/data-types#hashes>
 [qhash-public-signature]: <http://doc.qt.io/qt-5/qhash.html#public-functions>
-
+[blpop-explained]: <http://redis.io/commands/BLPOP>
+[brpop-explained]: <http://redis.io/commands/BRPOP>
