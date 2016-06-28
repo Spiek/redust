@@ -8,7 +8,7 @@
 #include "redisinterface.h"
 
 // redust
-#include "redust/redisconnectionmanager.h"
+#include "redust/redisserver.h"
 
 class RedisListPoller : public QObject
 {

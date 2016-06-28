@@ -1,4 +1,4 @@
-#include "redust/redisconnectionmanager.h"
+#include "redust/redisserver.h"
 
 QMutex RedisServer::mutex;
 

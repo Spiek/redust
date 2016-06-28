@@ -8,7 +8,7 @@
 #include <list>
 
 // redis
-#include "redust/redisconnectionmanager.h"
+#include "redust/redisserver.h"
 
 class RedisInterface
 {

@@ -1,7 +1,7 @@
 #include <QtTest/QtTest>
 
 #include "redust/redishash.h"
-#include "redust/redisconnectionmanager.h"
+#include "redust/redisserver.h"
 #include "redust/redislistpoller.h"
 
 // const variables
