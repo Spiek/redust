@@ -1,4 +1,4 @@
-#include "recotec/redislistpoller.h"
+#include "redust/redislistpoller.h"
 
 RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, RedisInterface::Position popDirection, QObject *parent) : QObject(parent)
 {

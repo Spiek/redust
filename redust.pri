@@ -5,17 +5,17 @@ SOURCES += $$PWD/src/redisconnectionmanager.cpp \
            $$PWD/src/redisinterface.cpp \
            $$PWD/src/redislistpoller.cpp
 
-HEADERS += $$PWD/include/recotec/redishash.h \
-           $$PWD/include/recotec/redisconnectionmanager.h \
-           $$PWD/include/recotec/typeserializer.h \
-           $$PWD/include/recotec/redisinterface.h \
-           $$PWD/include/recotec/redislistpoller.h
+HEADERS += $$PWD/include/redust/redishash.h \
+           $$PWD/include/redust/redisconnectionmanager.h \
+           $$PWD/include/redust/typeserializer.h \
+           $$PWD/include/redust/redisinterface.h \
+           $$PWD/include/redust/redislistpoller.h
 
 # Additional helper headers for easy access
-HEADERS += $$PWD/include/recotec/RedisHash \
-           $$PWD/include/recotec/RedisConnectionManager \
-           $$PWD/include/recotec/TypeSerializer \
-           $$PWD/include/recotec/RedisInterface
+HEADERS += $$PWD/include/redust/RedisHash \
+           $$PWD/include/redust/RedisConnectionManager \
+           $$PWD/include/redust/TypeSerializer \
+           $$PWD/include/redust/RedisInterface
 
 INCLUDEPATH += $$PWD/include
 

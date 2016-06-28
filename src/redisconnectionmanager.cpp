@@ -1,4 +1,4 @@
-#include "recotec/redisconnectionmanager.h"
+#include "redust/redisconnectionmanager.h"
 
 QMutex RedisServer::mutex;
 

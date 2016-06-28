@@ -27,7 +27,7 @@ Example:
 ```c++
 #include <QString>
 #include <QDebug>
-#include <recotec/redishash.h>
+#include <redust/redishash.h>
 
 int main()
 {
@@ -118,7 +118,7 @@ Example:
 #include <QCoreApplication>
 #include <QString>
 #include <QDebug>
-#include <recotec/redislistpoller.h>
+#include <redust/redislistpoller.h>
 
 int main()
 {
@@ -169,17 +169,17 @@ BLPOP | test | zuzu | 1
 **Static:**  
 Add to your Project file:
 ```qmake
-include(recotec.pri)
+include(redust.pri)
 ```
 **Dynamic:**  
 ```
-qmake recotec.pro
+qmake redust.pro
 make
 make install
 ```
 add the following to your pro file:
 ```qmake
-LIBS += -lrecotec
+LIBS += -lredust
 ```
 
 

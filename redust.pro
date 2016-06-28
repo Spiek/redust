@@ -2,13 +2,13 @@
 DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
 
 # Lib settings
-PROJECTNAME = recotec
+PROJECTNAME = redust
 TEMPLATE = lib
 CONFIG   += console debug_and_release
 CONFIG   -= app_bundle
 
-# Include recotec
-include(recotec.pri)
+# Include redust
+include(redust.pri)
 
 # Binary installer
 target.path = $$[QT_INSTALL_LIBS]
@@ -17,7 +17,7 @@ INSTALLS += target
 
 # Header installer
 header.files = $$HEADERS
-header.path = $$[QT_INSTALL_HEADERS]/recotec
+header.path = $$[QT_INSTALL_HEADERS]/redust
 INSTALLS += header
 !build_pass:message("library headers install folder: "$$header.path)
 

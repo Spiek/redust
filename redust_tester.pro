@@ -1,6 +1,6 @@
 QT += testlib core network
 TEMPLATE = app
-TARGET = recotectester
+TARGET = redusttester
 INCLUDEPATH += src/test
 CONFIG += c++11
 
@@ -19,4 +19,4 @@ DEFINES += REDIS_SERVER=\\\"127.0.0.1\\\"
 DEFINES += REDIS_SERVER_PORT=6379
 
 # link against additional libraries
-include(recotec.pri)
+include(redust.pri)
