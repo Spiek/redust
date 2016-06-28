@@ -14,7 +14,13 @@ class RedisListPoller : public QObject
 {
     Q_OBJECT
     public:
-        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, int timeout = 0, RedisInterface::Position popDirection = RedisInterface::Position::Begin, QObject *parent = 0);
+        enum PollTimeType
+        {
+            UntilTimeout = 1,
+            UntilFirstPop = 2,
+            Forever = 4
+        };
+        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, int timeout = 0, PollTimeType pollTimeType = PollTimeType::Forever, RedisInterface::Position popDirection = RedisInterface::Position::Begin, QObject *parent = 0);
         ~RedisListPoller();
         bool start();
         void stop(bool instantly = false);
@@ -23,16 +29,19 @@ class RedisListPoller : public QObject
         inline bool isRunning() { return !this->suspended && this->socket && this->socket->isReadable(); }
 
         // getter / setter
-        inline std::list<QByteArray> getKeys() { return this->lstKeys; }
+        inline std::list<QByteArray> keys() { return this->lstKeys; }
         inline void setKeys(std::list<QByteArray> keys) { this->lstKeys = keys; }
-        inline int getTimeout() { return this->intTimeout; }
+        inline int timeout() { return this->intTimeout; }
         inline void setTimeout(int timeout) { this->intTimeout = timeout; }
+        inline PollTimeType pollTimeType() { return this->enumPollTimeType; }
+        inline void setPollTimeType(PollTimeType pollTimeType) { this->enumPollTimeType = pollTimeType; }
 
     signals:
-        void timeout();
+        void timeoutReached();
         void popped(QByteArray list, QByteArray value);
 
     private slots:
+        bool pop();
         void handleResponse();
         bool acquireSocket();
         void releaseSocket();
@@ -40,6 +49,7 @@ class RedisListPoller : public QObject
     private:
         int intTimeout;
         bool suspended = false;
+        PollTimeType enumPollTimeType;
         std::list<QByteArray> lstKeys;
         RedisInterface::Position popDirection;
         RedisServer* server = 0;

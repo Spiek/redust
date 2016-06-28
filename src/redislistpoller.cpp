@@ -1,12 +1,13 @@
 #include "recotec/redislistpoller.h"
 
-RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, RedisInterface::Position popDirection, QObject *parent) : QObject(parent)
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, RedisInterface::Position popDirection, QObject *parent) : QObject(parent)
 {
     // save keys in deserialized form
     this->intTimeout = timeout;
     this->lstKeys = keys;
     this->popDirection = popDirection;
     this->server = &server;
+    this->enumPollTimeType = pollTimeType;
 }
 
 RedisListPoller::~RedisListPoller()
@@ -17,14 +18,11 @@ RedisListPoller::~RedisListPoller()
 
 bool RedisListPoller::start()
 {
-    // reset suspend
-    this->suspended = false;
+    // if is allready running, exit success
+    if(this->isRunning()) return true;
 
-    // acquire socket, and exit on fail
-    if(!this->acquireSocket()) return false;
-
-    // run blpop and return result
-    return RedisInterface::bpop(this->socket, this->lstKeys, this->popDirection, this->intTimeout);
+    // oterwise pop
+    return this->pop();
 }
 
 void RedisListPoller::stop(bool instantly)
@@ -34,6 +32,18 @@ void RedisListPoller::stop(bool instantly)
 
     // otherwise we set the suspended flag so that after the next received data we don't start over
     else this->suspended = true;
+}
+
+bool RedisListPoller::pop()
+{
+    // reset suspend
+    this->suspended = false;
+
+    // acquire socket, and exit on fail
+    if(!this->acquireSocket()) return false;
+
+    // run blpop and return result
+    return RedisInterface::bpop(this->socket, this->lstKeys, this->popDirection, this->intTimeout);
 }
 
 void RedisListPoller::handleResponse()
@@ -46,16 +56,24 @@ void RedisListPoller::handleResponse()
     if(result.type == RedisInterface::RedisData::Type::Error) return;
 
     // if no element could be popped, timeout reached
-    if(result.array.size() == 1 && result.array.front().isNull()) emit this->timeout();
+    if(result.array.size() == 1 && result.array.front().isNull()) {
+        // if user only want to loop until timeout reached, so suspend
+        if((this->enumPollTimeType & PollTimeType::UntilTimeout) == PollTimeType::UntilTimeout) this->suspended = true;
+        emit this->timeoutReached();
+    }
 
     // otherwise inform outside world about popped element
-    else if(result.array.size() == 2) emit this->popped(result.array.front(), result.array.back());
+    else if(result.array.size() == 2) {
+        // if user only want to loop until first pop, so suspend
+        if((this->enumPollTimeType & PollTimeType::UntilFirstPop) == PollTimeType::UntilFirstPop) this->suspended = true;
+        emit this->popped(result.array.front(), result.array.back());
+    }
 
     // if suspended flag is set, free the socket instantly and don't start over
     if(this->suspended) this->releaseSocket();
 
     // otherwise just start over
-    else this->start();
+    else this->pop();
 }
 
 bool RedisListPoller::acquireSocket()
