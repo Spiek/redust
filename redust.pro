@@ -1,4 +1,4 @@
-# Features
+# Features (remove or comment out the following lines to disable features!)
 DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
 
 # Lib settings

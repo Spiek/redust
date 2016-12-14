@@ -19,5 +19,7 @@ HEADERS += $$PWD/include/redust/RedisHash \
 
 INCLUDEPATH += $$PWD/include
 
-# link against protobuf lib
-LIBS += -lprotobuf
+# protobuffer support
+contains(DEFINES, REDISMAP_SUPPORT_PROTOBUF) {
+    LIBS += -lprotobuf
+}
