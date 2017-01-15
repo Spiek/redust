@@ -174,7 +174,36 @@ class RedisServer : public QObject
         // General Redis Functions
         RedisRequest ping(QByteArray data = "", RequestType = RequestType::Asyncron);
 
-   private:
+        // Key-Value Redis Functions
+        RedisRequest del(QByteArray key, RequestType type = RequestType::Syncron);
+        RedisRequest exists(QByteArray key, RequestType type = RequestType::Syncron);
+        RedisRequest keys(QByteArray pattern = "*", RequestType type = RequestType::Syncron);
+
+        // List Redis Functions
+        RedisRequest lpush(QByteArray key, QByteArray value, RequestType type = RequestType::Asyncron);
+        RedisRequest lpush(QByteArray key, std::list<QByteArray> values, RequestType type = RequestType::Asyncron);
+        RedisRequest rpush(QByteArray key, QByteArray value, RequestType type = RequestType::Asyncron);
+        RedisRequest rpush(QByteArray key, std::list<QByteArray> values, RequestType type = RequestType::Asyncron);
+        bool blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
+        bool brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
+        RedisRequest llen(QByteArray key, RequestType type = RequestType::Syncron);
+
+        // Hash Redis Functions
+        RedisRequest hlen(QByteArray list, RequestType type = RequestType::Syncron);
+        RedisRequest hset(QByteArray list, QByteArray key, QByteArray value, RequestType type = RequestType::Asyncron);
+        RedisRequest hsetnx(QByteArray list, QByteArray key, QByteArray value, RequestType type = RequestType::Asyncron);
+        RedisRequest hmset(QByteArray list, std::list<QByteArray> keys, std::list<QByteArray> values, RequestType type = RequestType::Asyncron);
+        RedisRequest hmset(QByteArray list, std::map<QByteArray, QByteArray> entries, RequestType type = RequestType::Asyncron);
+        RedisRequest hexists(QByteArray list, QByteArray key, RequestType type = RequestType::Syncron);
+        RedisRequest hdel(QByteArray list, QByteArray key, RequestType type = RequestType::Asyncron);
+        RedisRequest hget(QByteArray list, QByteArray key, RequestType type = RequestType::Syncron);
+        RedisRequest hgetall(QByteArray list, RequestType type = RequestType::Asyncron);
+        RedisRequest hmget(QByteArray list, std::list<QByteArray> keys, RequestType type = RequestType::Asyncron);
+        RedisRequest hstrlen(QByteArray list, QByteArray key, RequestType type = RequestType::Asyncron);
+        RedisRequest hkeys(QByteArray list, RequestType type = RequestType::Asyncron);
+        RedisRequest hvals(QByteArray list, RequestType type = RequestType::Asyncron);
+
+    private:
         // very fast implementation of integer places counting
         // src: http://stackoverflow.com/a/1068937
         static inline int numIntPlaces(int n) {

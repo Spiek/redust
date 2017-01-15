@@ -82,7 +82,7 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
     // if socket is not available, try to acquire socket by RequestType
     if(!socket) {
         ConnectionType conType = type == RequestType::WriteOnly      ?  RedisServer::ConnectionType::WriteOnly :
-                                 type == RequestType::BlockedSyncron ?  RedisServer::ConnectionType::Blocked :
+                                 type == RequestType::Syncron        ?  RedisServer::ConnectionType::Blocked :
                                                                         RedisServer::ConnectionType::ReadWrite;
         socket = this->requestConnection(conType);
     }
@@ -128,9 +128,12 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
 
     // 4. handle types
     if(type == RequestType::WriteOnly);
-    else if(type == RequestType::WriteOnlyBlocked || type == RequestType::BlockedSyncron) {
+    else if(socket != this->socketReadWrite && (type == RequestType::Asyncron || type == RequestType::PipeLine)) {
+        qWarning("Executions of %s-Requests are only supported on RedisServer's own ReadWrite Socket, request may not handled correctly...", type == RequestType::Asyncron ? "Asyncron" : "Pipeline");
+    }
+    else if(type == RequestType::WriteOnlyBlocked || type == RequestType::Syncron) {
         if(!socket->waitForBytesWritten()) request->error("Write Wait Error");
-        if(type == RequestType::BlockedSyncron && !this->parseResponse(request)) {
+        if(type == RequestType::Syncron && !this->parseResponse(request)) {
             request->error("Redis Parse Error");
         }
     } else if(type == RequestType::Asyncron) {
@@ -221,8 +224,8 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
 
     // handle base types (SimpleString, Error and Integer)
     else if(response->type() == RedisResponseData::Type::String ||
-       response->type() == RedisResponseData::Type::Error ||
-       response->type() == RedisResponseData::Type::Integer)
+            response->type() == RedisResponseData::Type::Error ||
+            response->type() == RedisResponseData::Type::Integer)
     {
         // get pointer to end of current segment and be sure we have enough data available to read
         char* protoSegmentNext = readSegement(&rawData);
@@ -322,6 +325,213 @@ RedisServer::RedisRequest RedisServer::ping(QByteArray data, RequestType type)
     if(!data.isEmpty()) lstCmd.push_back(data);
 
     return this->execRedisCommand(lstCmd, type);
+}
+
+RedisServer::RedisRequest RedisServer::del(QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // DEL List
+    // src: http://redis.io/commands/del
+    return this->execRedisCommand({"DEL", key }, type);
+}
+
+RedisServer::RedisRequest RedisServer::exists(QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // EXISTS list
+    // src: http://redis.io/commands/exists
+    return this->execRedisCommand({"EXISTS", key }, type);
+}
+
+RedisServer::RedisRequest RedisServer::keys(QByteArray pattern, RequestType type)
+{
+    // Build and execute Command
+    // KEYS pattern
+    // src: http://redis.io/commands/KEYS
+    return this->execRedisCommand({"KEYS", pattern }, type);
+}
+
+RedisServer::RedisRequest RedisServer::lpush(QByteArray key, QByteArray value, RequestType type)
+{
+    return RedisServer::lpush(key, std::list<QByteArray>{value}, type);
+}
+
+RedisServer::RedisRequest RedisServer::lpush(QByteArray key, std::list<QByteArray> values, RequestType type)
+{
+    // Build and execute Command
+    // LPUSH key value [value]...
+    // src: http://redis.io/commands/lpush
+    values.push_front(key);
+    values.push_front("LPUSH");
+
+    // exec async
+    return this->execRedisCommand(values, type);
+}
+
+RedisServer::RedisRequest RedisServer::rpush(QByteArray key, QByteArray value, RequestType type)
+{
+    return RedisServer::rpush(key, std::list<QByteArray>{value}, type);
+}
+
+RedisServer::RedisRequest RedisServer::rpush(QByteArray key, std::list<QByteArray> values, RequestType type)
+{
+    // Build and execute Command
+    // RPUSH key value [value]...
+    // src: http://redis.io/commands/lpush
+    values.push_front(key);
+    values.push_front("RPUSH");
+
+    // exec async
+    return this->execRedisCommand(values, type);
+}
+
+bool RedisServer::blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
+{
+    // Build and execute Command
+    // src: http://redis.io/commands/BLPOP lists timeout
+    lists.push_front("BLPOP");
+    lists.push_back(QByteArray::number(timeout));
+    return !this->execRedisCommand(lists, type, socket)->hasError();
+}
+
+bool RedisServer::brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
+{
+    // Build and execute Command
+    // src: http://redis.io/commands/BRPOP lists timeout
+    lists.push_front("BRPOP");
+    lists.push_back(QByteArray::number(timeout));
+    return !this->execRedisCommand(lists, type, socket)->hasError();
+}
+
+RedisServer::RedisRequest RedisServer::llen(QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // LLEN key
+    // src: http://redis.io/commands/llen
+    return this->execRedisCommand({"LLEN", key}, type);
+}
+
+RedisServer::RedisRequest RedisServer::hlen(QByteArray list, RequestType type)
+{
+    // Build and execute Command
+    // HLEN list
+    // src: http://redis.io/commands/hlen
+    return this->execRedisCommand({"HLEN", list}, type);
+}
+
+RedisServer::RedisRequest RedisServer::hset(QByteArray list, QByteArray key, QByteArray value, RequestType type)
+{
+    // Build and execute Command
+    // HSET list key value
+    // src: http://redis.io/commands/hset
+    return this->execRedisCommand({ "HSET", list, key, value }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hsetnx(QByteArray list, QByteArray key, QByteArray value, RequestType type)
+{
+    // Build and execute Command
+    // HSETNX list key value
+    // src: http://redis.io/commands/hsetnx
+    return this->execRedisCommand({ "HSETNX", list, key, value }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hmset(QByteArray list, std::list<QByteArray> keys, std::list<QByteArray> values, RequestType type)
+{
+    // Build and execute Command
+    // HMSET list key value [ key value ] ...
+    // src: http://redis.io/commands/hmset
+    if(keys.size() != values.size()) return RedisServer::RedisRequest(new RedisRequestData("key/value size is different!"));
+    std::list<QByteArray> lstCmd = { "HMSET", list };
+    auto itrKey = keys.begin();
+    auto itrValue = values.begin();
+    for(;itrKey != keys.end();) {
+        lstCmd.push_back(*itrKey++);
+        lstCmd.push_back(*itrValue++);
+    }
+
+    // execute
+    return this->execRedisCommand(lstCmd, type);
+}
+
+RedisServer::RedisRequest RedisServer::hmset(QByteArray list, std::map<QByteArray, QByteArray> entries, RequestType type)
+{
+    // Build and execute Command
+    // HMSET list key value [ key value ] ...
+    // src: http://redis.io/commands/hmset
+    std::list<QByteArray> lstCmd = { "HMSET", list };
+    for(auto itr = entries.begin(); itr != entries.end(); itr++) {
+        lstCmd.push_back(itr->first);
+        lstCmd.push_back(itr->second);
+    }
+
+    // execute
+    return this->execRedisCommand(lstCmd, type);
+}
+
+RedisServer::RedisRequest RedisServer::hexists(QByteArray list, QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // HEXISTS list key
+    // src: http://redis.io/commands/hexists
+    return this->execRedisCommand({ "HEXISTS", list, key }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hdel(QByteArray list, QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // HDEL list key
+    // src: http://redis.io/commands/hdel
+    return this->execRedisCommand({ "HDEL", list, key}, type);
+}
+
+RedisServer::RedisRequest RedisServer::hget(QByteArray list, QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // HGET list key
+    // src: http://redis.io/commands/hget
+    return this->execRedisCommand({ "HGET", list, key }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hgetall(QByteArray list, RequestType type)
+{
+    // Build and execute Command
+    // HGETALL list
+    // src: http://redis.io/commands/hgetall
+    return this->execRedisCommand({ "HGETALL", list}, type);
+}
+
+RedisServer::RedisRequest RedisServer::hmget(QByteArray list, std::list<QByteArray> keys, RequestType type)
+{
+    // Build and execute Command
+    // HMGET list [ key ] ...
+    // src: http://redis.io/commands/hmget
+    keys.push_front(list);
+    keys.push_front("HMGET");
+    return this->execRedisCommand(keys, type);
+}
+
+RedisServer::RedisRequest RedisServer::hstrlen(QByteArray list, QByteArray key, RequestType type)
+{
+    // Build and execute Command
+    // HSTRLEN key field
+    // src: http://redis.io/commands/hstrlen
+    return this->execRedisCommand({ "HSTRLEN", list, key }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hkeys(QByteArray list, RequestType type)
+{
+    // Build and execute Command
+    // HKEYS list
+    // src: http://redis.io/commands/hkeys
+    return this->execRedisCommand({ "HKEYS", list }, type);
+}
+
+RedisServer::RedisRequest RedisServer::hvals(QByteArray list, RequestType type)
+{
+    // Build and execute Command
+    // HVALS list
+    // src: http://redis.io/commands/hvals
+    return this->execRedisCommand({ "HVALS", list }, type);
 }
 
 void RedisServer::handleRedisResponse()
