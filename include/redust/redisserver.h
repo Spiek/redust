@@ -56,6 +56,12 @@ class RedisServer : public QObject
                     this->_integer = integer;
                 }
 
+                // Boolean
+                bool boolean() {
+                    return this->_type == RedisResponseData::Type::Integer ? this->integer() == 1 :
+                           this->_type == RedisResponseData::Type::String  ? this->string() == "OK" : false;
+                }
+
                 // Array
                 std::list<QByteArray>& array() { return this->_array; }
                 void array(std::list<QByteArray> array)
@@ -86,7 +92,7 @@ class RedisServer : public QObject
             private:
                 QByteArray _string;
                 QString _errorString;
-                int _integer;
+                int _integer = -1;
                 std::list<QByteArray> _array;
                 std::list<std::list<QByteArray>> _arrayList;
                 bool _signalIgnored = 0;
@@ -101,6 +107,7 @@ class RedisServer : public QObject
          */
         struct RedisRequestData
         {
+            RedisRequestData(QString error) : _response(new RedisResponseData(0)) { this->error(error); }
             RedisRequestData(QTcpSocket* socket) : _response(new RedisResponseData(socket)), _socket(socket) { }
 
             // Error
@@ -145,7 +152,7 @@ class RedisServer : public QObject
         enum class RequestType {
             WriteOnly,
             WriteOnlyBlocked,
-            BlockedSyncron,
+            Syncron,
             Asyncron,
             PipeLine
         };
