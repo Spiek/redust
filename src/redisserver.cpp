@@ -86,7 +86,7 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
     }
 
     // check socket
-    RedisServer::RedisRequest request(new RedisRequestData(socket));
+    RedisServer::RedisRequest request(new RedisRequestData(type, socket));
     request->cmd(cmd.front());
     if(!socket) {
         request->error("No Socket");
@@ -452,7 +452,7 @@ RedisServer::RedisRequest RedisServer::hmset(QByteArray list, std::list<QByteArr
     // Build and execute Command
     // HMSET list key value [ key value ] ...
     // src: http://redis.io/commands/hmset
-    if(keys.size() != values.size()) return RedisServer::RedisRequest(new RedisRequestData("key/value size is different!"));
+    if(keys.size() != values.size()) return RedisServer::RedisRequest(new RedisRequestData(type, "key/value size is different!"));
     std::list<QByteArray> lstCmd = { "HMSET", list };
     auto itrKey = keys.begin();
     auto itrValue = values.begin();

@@ -8,6 +8,14 @@ class RedisServer : public QObject
 {
     Q_OBJECT
     public:
+        enum class RequestType {
+            WriteOnly,
+            WriteOnlyBlocked,
+            Syncron,
+            Asyncron,
+            PipeLine
+        };
+
         /*
          * Redis Response Data
          * - contains result data from the redis server
@@ -104,8 +112,8 @@ class RedisServer : public QObject
          */
         struct RedisRequestData
         {
-            RedisRequestData(QString error) : _response(new RedisResponseData(0)) { this->error(error); }
-            RedisRequestData(QTcpSocket* socket) : _response(new RedisResponseData(socket)), _socket(socket) { }
+            RedisRequestData(RequestType type, QString error) : _type(type), _response(new RedisResponseData(0)) { this->error(error); }
+            RedisRequestData(RequestType type, QTcpSocket* socket) : _type(type), _response(new RedisResponseData(socket)), _socket(socket) { }
 
             // Error
             bool hasError()  { return !this->_errorString.isEmpty(); }
@@ -128,7 +136,11 @@ class RedisServer : public QObject
             QByteArray& cmd() { return this->_cmd; }
             void cmd(QByteArray cmd) { this->_cmd = cmd; }
 
+            // request type
+            RequestType& type() { return this->_type; }
+
             // internal data
+            RequestType _type;
             RedisResponse _response;
             QTcpSocket* _socket = 0;
             QString _errorString;
@@ -145,13 +157,6 @@ class RedisServer : public QObject
             WriteOnly,
             ReadWrite,
             Blocked
-        };
-        enum class RequestType {
-            WriteOnly,
-            WriteOnlyBlocked,
-            Syncron,
-            Asyncron,
-            PipeLine
         };
 
         // Con/Decons
