@@ -22,7 +22,7 @@ bool RedisServer::initConnections(bool readWrite, bool writeOnly, int blockedSoc
     if(readWrite && !this->requestConnection(RedisServer::ConnectionType::ReadWrite)) return false;
 
     // acquire readwrite blockedSockets sockets, and exit on fail
-    for(int i = blockedSockets - this->lstBlockedSockets.count(); i > 0; i--) {
+    for(int i = 0; i < blockedSockets; i++) {
         if(!this->requestConnection(RedisServer::ConnectionType::Blocked)) return false;
     }
 
@@ -72,7 +72,7 @@ QTcpSocket* RedisServer::requestConnection(RedisServer::ConnectionType type)
 void RedisServer::freeBlockedConnection(QTcpSocket *socket)
 {
     // append socket to blocked connection list
-    if(socket) this->lstBlockedSockets.append(socket);
+    if(socket) this->lstBlockedSockets.enqueue(socket);
 }
 
 RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cmd, RequestType type, QTcpSocket* socket)
@@ -129,12 +129,11 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
     if(type == RequestType::WriteOnly);
     else if(socket != this->socketReadWrite && (type == RequestType::Asyncron || type == RequestType::PipeLine)) {
         qWarning("Executions of %s-Requests are only supported on RedisServer's own ReadWrite Socket, request may not handled correctly...", type == RequestType::Asyncron ? "Asyncron" : "Pipeline");
-    }
-    else if(type == RequestType::WriteOnlyBlocked || type == RequestType::Syncron) {
-        if(!socket->waitForBytesWritten()) request->error("Write Wait Error");
-        if(type == RequestType::Syncron && !this->parseResponse(request)) {
-            request->error("Redis Parse Error");
-        }
+    } else if(type == RequestType::Syncron) {
+        if(!this->parseResponse(request)) request->error("Redis Parse Error");
+        this->freeBlockedConnection(socket);
+    } else if(type == RequestType::WriteOnlyBlocked && !socket->waitForBytesWritten()) {
+        request->error("Write Wait Error");
     } else if(type == RequestType::Asyncron) {
         this->pendingRequests.enqueue(request);
     } else if(type == RequestType::PipeLine) {

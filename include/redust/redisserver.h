@@ -164,7 +164,7 @@ class RedisServer : public QObject
         ~RedisServer();
 
         // Redis server connection handling
-        bool initConnections(bool readWrite = true, bool writeOnly = false, int blockedSockets = 0);
+        bool initConnections(bool readWrite = true, bool writeOnly = false, int blockedSockets = 1);
         QTcpSocket* requestConnection(RedisServer::ConnectionType type);
         void freeBlockedConnection(QTcpSocket *socket);
 
