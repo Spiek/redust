@@ -55,8 +55,6 @@ QTcpSocket* RedisServer::requestConnection(RedisServer::ConnectionType type)
     // if we have no socket, exit
     if(!socket) return 0;
 
-    socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-
     // socket not connected at this point, so let us blocked syncronly connect
     socket->connectToHost(this->strRedisConnectionHost, this->intRedisConnectionPort, type == ConnectionType::WriteOnly ? QIODevice::WriteOnly : QIODevice::ReadWrite);
     if(!socket->waitForConnected(5000)) {
@@ -89,6 +87,7 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
 
     // check socket
     RedisServer::RedisRequest request(new RedisRequestData(socket));
+    request->cmd(cmd.front());
     if(!socket) {
         request->error("No Socket");
         return request;
@@ -300,6 +299,19 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
         socket->ungetChar(*itr);
     }
 
+    // some command based normalizations
+    // [H|S|Z|]SCAN
+    // - move 1. element of 1. arraylist element to cursor and 2. arraylist element to array
+    if(request->cmd() == "SCAN" ||
+       request->cmd() == "HSCAN" ||
+       request->cmd() == "SSCAN" ||
+       request->cmd() == "ZSCAN")
+    {
+        response->cursor(response->arrayList().front().front().toInt());
+        response->array(response->arrayList().back());
+        response->arrayList().clear();
+    }
+
     // everything okay
     return true;
 }
@@ -307,7 +319,7 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
 int RedisServer::executePipeline(bool waitForBytesWritten)
 {
     if(this->pendingPipelineRequests.isEmpty()) return 0;
-    int count = this->pendingPipelineRequests.count();
+    int count = this->pendingPipelineData.count();
     this->pendingRequests.append(this->pendingPipelineRequests);
     this->socketReadWrite->write(this->pendingPipelineData);
     this->pendingPipelineRequests.clear();
@@ -532,6 +544,47 @@ RedisServer::RedisRequest RedisServer::hvals(QByteArray list, RequestType type)
     // HVALS list
     // src: http://redis.io/commands/hvals
     return this->execRedisCommand({ "HVALS", list }, type);
+}
+
+RedisServer::RedisRequest RedisServer::scan(QByteArray cursor, int count, QByteArray pattern, RequestType type)
+{
+    return this->scan("SCAN", "", cursor, count, pattern, type);
+}
+
+RedisServer::RedisRequest RedisServer::sscan(QByteArray key, QByteArray cursor, int count, QByteArray pattern, RequestType type)
+{
+    return this->scan("SSCAN", key, cursor, count, pattern, type);
+}
+
+RedisServer::RedisRequest RedisServer::hscan(QByteArray key, QByteArray cursor, int count, QByteArray pattern, RequestType type)
+{
+    return this->scan("HSCAN", key, cursor, count, pattern, type);
+}
+
+RedisServer::RedisRequest RedisServer::zscan(QByteArray key, QByteArray cursor, int count, QByteArray pattern, RequestType type)
+{
+    return this->scan("ZSCAN", key, cursor, count, pattern, type);
+}
+
+RedisServer::RedisRequest RedisServer::scan(QByteArray scanType, QByteArray key, QByteArray cursor, int count, QByteArray pattern, RequestType type)
+{
+    // Build and execute Command
+    // [|S|H|Z]SCAN cursor [MATCH pattern] [COUNT count]
+    // src: http://redis.io/commands/scan
+    std::list<QByteArray> lstCmd = { scanType };
+    if(!key.isEmpty()) {
+        lstCmd.push_back(key);
+    }
+    lstCmd.push_back(cursor);
+    if(!pattern.isEmpty()) {
+        lstCmd.push_back("MATCH");
+        lstCmd.push_back(pattern);
+    }
+    if(count != -1) {
+        lstCmd.push_back("COUNT");
+        lstCmd.push_back(QByteArray::number(count));
+    }
+    return this->execRedisCommand(lstCmd, type);
 }
 
 void RedisServer::handleRedisResponse()

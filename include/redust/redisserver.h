@@ -78,14 +78,11 @@ class RedisServer : public QObject
                     this->_arrayList = arrayList;
                 }
 
-                // Future
-                bool signalIgnored() { return this->_signalIgnored; }
-                void signalIgnored(bool ignored)
-                {
-                    this->_signalIgnored = ignored;
-                }
+                // SCAN cursor
+                int& cursor() { return this->_cursor; }
+                void cursor(int cursor) { this->_cursor = cursor; }
 
-                // socket
+                // Socket
                 QTcpSocket* socket() { return this->_socket; }
                 void socket(QTcpSocket* socket) { this->_socket = socket; }
 
@@ -95,9 +92,9 @@ class RedisServer : public QObject
                 int _integer = -1;
                 std::list<QByteArray> _array;
                 std::list<std::list<QByteArray>> _arrayList;
-                bool _signalIgnored = 0;
                 Type _type;
                 QTcpSocket* _socket = 0;
+                int _cursor;
         };
         typedef QSharedPointer<RedisResponseData> RedisResponse;
 
@@ -119,7 +116,6 @@ class RedisServer : public QObject
             QTcpSocket* socket() { return this->_socket; }
 
             // response
-            bool hasReponse()  { return this->_response.data(); }
             RedisResponse response() { return this->_response; }
             void response(RedisResponse response) { this->_response = response; }
 
@@ -128,11 +124,16 @@ class RedisServer : public QObject
             QVariant& customData() { return this->_customData; }
             void customData(QVariant customData) { this->_customData = customData; }
 
+            // executed redis command
+            QByteArray& cmd() { return this->_cmd; }
+            void cmd(QByteArray cmd) { this->_cmd = cmd; }
+
             // internal data
             RedisResponse _response;
             QTcpSocket* _socket = 0;
             QString _errorString;
             QVariant _customData;
+            QByteArray _cmd;
         };
         typedef QSharedPointer<RedisRequestData> RedisRequest;
 
@@ -140,10 +141,6 @@ class RedisServer : public QObject
         void redisResponseFinished(RedisServer::RedisRequest request, bool success);
 
     public:
-        enum class Position {
-            Begin,
-            End
-        };
         enum class ConnectionType {
             WriteOnly,
             ReadWrite,
@@ -203,7 +200,15 @@ class RedisServer : public QObject
         RedisRequest hkeys(QByteArray list, RequestType type = RequestType::Asyncron);
         RedisRequest hvals(QByteArray list, RequestType type = RequestType::Asyncron);
 
+        // Scan Redis Functions
+        RedisRequest scan(QByteArray cursor = "0", int count = -1, QByteArray pattern = "", RequestType type = RequestType::Syncron);
+        RedisRequest sscan(QByteArray key, QByteArray cursor = "0", int count = -1, QByteArray pattern = "", RequestType type = RequestType::Syncron);
+        RedisRequest hscan(QByteArray key, QByteArray cursor = "0", int count = -1, QByteArray pattern = "", RequestType type = RequestType::Syncron);
+        RedisRequest zscan(QByteArray key, QByteArray cursor = "0", int count = -1, QByteArray pattern = "", RequestType type = RequestType::Syncron);
+
     private:
+        RedisRequest scan(QByteArray scanType, QByteArray key, QByteArray cursor, int count, QByteArray pattern, RequestType type);
+
         // very fast implementation of integer places counting
         // src: http://stackoverflow.com/a/1068937
         static inline int numIntPlaces(int n) {
