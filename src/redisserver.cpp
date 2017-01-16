@@ -163,7 +163,7 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
 
     // get data (wait syncronly if no data is available)
     if(!socket->bytesAvailable()) socket->waitForReadyRead();
-    QByteArray data = socket->readAll();
+    QByteArray data = socket->read(10);
 
     /// Parse RESP Response
     /// see: http://redis.io/topics/protocol#resp-protocol-description
@@ -185,7 +185,7 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
             if(!socket->bytesAvailable()) socket->waitForReadyRead();
 
             // read all available data and update the raw pointer
-            data += socket->readAll();
+            data += socket->read(10);
             *rawData = data.data();
         }
         return !segmentLength ? ++protoSegmentEnd : *rawData + segmentLength;
