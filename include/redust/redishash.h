@@ -3,11 +3,10 @@
 
 // core
 #include <QByteArray>
-#include <QString>
 
 // redis
 #include "typeserializer.h"
-#include "redisinterface.h"
+#include "redisserver.h"
 
 template< typename Key, typename Value >
 class RedisHash
@@ -52,10 +51,10 @@ class RedisHash
             {
                 return this->forward(elements);
             }
-            iterator erase(bool waitForAnswer = true)
+            iterator erase(RedisServer::RequestType type = RedisServer::RequestType::Syncron)
             {
                 if(this->currentKey.isEmpty()) return *this;
-                RedisInterface::hdel(*this->redisServer, this->currentKey, waitForAnswer);
+                this->redisServer->hdel(this->list, this->currentKey, type);
                 return this->forward(1);
             }
 
@@ -149,7 +148,9 @@ class RedisHash
                 if(this->posRedis == -1) this->posRedis = 0;
 
                 // refill queue
-                RedisInterface::scan(*this->redisServer, this->list, this->queueElements, this->cacheSize, this->posRedis, &this->posRedis);
+                RedisServer::RedisResponse response = this->redisServer->hscan(this->list, QByteArray::number(this->posRedis), this->cacheSize)->response();
+                this->posRedis = response->cursor();
+                this->queueElements = response->array();
 
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
@@ -220,14 +221,14 @@ class RedisHash
             return pos.erase(waitForAnswer);
         }
 
-        bool clear(bool async = true)
+        bool clear(RedisServer::RequestType type = RedisServer::RequestType::Syncron)
         {
-            return RedisInterface::del(this->list, async, this->connectionPool);
+            return !this->redisServer->del(this->list, type)->hasError();
         }
 
         int count()
         {
-            return RedisInterface::hlen(*this->redisServer, this->list);
+            return this->redisServer->hlen(this->list, RedisServer::RequestType::Syncron)->response()->integer();
         }
 
         bool empty()
@@ -237,90 +238,88 @@ class RedisHash
 
         bool isEmpty()
         {
-            return !RedisInterface::hlen(*this->redisServer, this->list);
+            return this->count() > 0;
         }
 
         bool exists(Key key)
         {
-            return RedisInterface::hexists(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), this->connectionPool);
+            return this->redisServer->hexists(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), RedisServer::RequestType::Syncron)->response()->integer() == 1;
         }
 
         bool exists()
         {
-            return RedisInterface::exists(this->list, this->connectionPool);
+            return this->redisServer->exists(this->list, RedisServer::RequestType::Syncron)->response()->integer() == 1;
         }
 
-        bool remove(Key key, bool waitForAnswer = true)
+        bool remove(Key key, RedisServer::RequestType type = RedisServer::RequestType::Syncron)
         {
-            return RedisInterface::hdel(*this->redisServer, this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), waitForAnswer);
+            return !this->redisServer->hdel(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), type)->hasError();
         }
 
-        NORM2VALUE(Value) take(Key key, bool waitForAnswer = true, bool *removeResult = 0)
+        NORM2VALUE(Value) take(Key key, RedisServer::RequestType type = RedisServer::RequestType::Syncron, bool *removeResult = 0)
         {
             NORM2VALUE(Value) value = this->value(key);
-            bool rResult = this->remove(key, waitForAnswer);
+            bool rResult = this->remove(key, type);
             if(removeResult) *removeResult = rResult;
             return value;
         }
 
-        bool insert(Key key, Value value, bool waitForAnswer = false, bool onlySetIfNotExists = false)
+        bool insert(Key key, Value value, bool replace = false, RedisServer::RequestType type = RedisServer::RequestType::Asyncron)
         {
-            return RedisInterface::hset(*this->redisServer, this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey),
-                                   TypeSerializer<Value>::serialize(value, this->binarizeValue), waitForAnswer, onlySetIfNotExists);
-        }
-
-        bool insert(QMap<Key, Value> values, bool waitForAnswer = false)
-        {
-            QList<QByteArray> keys;
-            QList<QByteArray> vals;
-            for(auto itr = values.begin(); itr != values.end(); itr++) {
-                keys.append(TypeSerializer<Key>::serialize(itr.key(), this->binarizeKey));
-                vals.append(TypeSerializer<Value>::serialize(itr.value(), this->binarizeValue));
+            if(replace) {
+                return !this->redisServer->hset(this->list,
+                                                TypeSerializer<Key>::serialize(key, this->binarizeKey),
+                                                TypeSerializer<Value>::serialize(value, this->binarizeValue), type)->hasError();
+            } else {
+                return !this->redisServer->hsetnx(this->list,
+                                                  TypeSerializer<Key>::serialize(key, this->binarizeKey),
+                                                  TypeSerializer<Value>::serialize(value, this->binarizeValue), type)->hasError();
             }
-            return RedisInterface::hmset(this->list, keys, vals, waitForAnswer, this->connectionPool);
         }
 
-        bool insert(QHash<Key, Value> values, bool waitForAnswer = false)
+        bool insert(QMap<Key, Value> values, RedisServer::RequestType type = RedisServer::RequestType::Asyncron)
         {
-            QList<QByteArray> keys;
-            QList<QByteArray> vals;
-            for(auto itr = values.begin(); itr != values.end(); itr++) {
-                keys.append(TypeSerializer<Key>::serialize(itr.key(), this->binarizeKey));
-                vals.append(TypeSerializer<Value>::serialize(itr.value(), this->binarizeValue));
-            }
-            return RedisInterface::hmset(this->list, keys, vals, waitForAnswer, this->connectionPool);
+            return !this->redisServer->hmset(this->list, values.keys().toStdList(), values.values().toStdList(), type)->hasError();
         }
 
-        bool insert(QList<Key> keys, QList<Value> values, bool waitForAnswer = false)
+        bool insert(QHash<Key, Value> values, RedisServer::RequestType type = RedisServer::RequestType::Asyncron)
+        {
+            return !this->redisServer->hmset(this->list, values.keys().toStdList(), values.values().toStdList(), type)->hasError();
+        }
+
+        bool insert(QList<Key> keys, QList<Value> values, RedisServer::RequestType type = RedisServer::RequestType::Asyncron)
         {
             if(keys.count() != values.count()) return false;
-            return RedisInterface::hmset(this->list, keys, values, waitForAnswer, this->connectionPool);
+            return !this->redisServer->hmset(this->list, keys.toStdList(), values.toStdList(), type)->hasError();
         }
 
         NORM2VALUE(Value) value(Key key)
         {
-            return TypeSerializer<Value>::deserialize(RedisInterface::hget(*this->redisServer, this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey)), this->binarizeValue);
+            return TypeSerializer<Value>::deserialize(this->redisServer->hget(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), RedisServer::RequestType::Syncron)->response()->string(), this->binarizeValue);
         }
 
         int valueLength(Key key)
         {
-            return RedisInterface::hstrlen(*this->redisServer, this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey));
+            return this->redisServer->hstrlen(this->list, TypeSerializer<Key>::serialize(key, this->binarizeKey), RedisServer::RequestType::Syncron)->response()->integer();
         }
 
-        QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1)
+        QList<NORM2VALUE(Key)> keys(int fetchChunkSize = -1, QByteArray pattern = "")
         {
             // create result data list
             QList<NORM2VALUE(Key)> list;
 
             // if fetch chunk size is smaller or equal 0, so exec hkeys
             std::list<QByteArray> elements;
-            if(fetchChunkSize <= 0) RedisInterface::hkeys(*this->redisServer, this->list, elements);
+            if(fetchChunkSize <= 0) elements.splice(elements.end(), this->redisServer->hkeys(this->list, RedisServer::RequestType::Syncron)->response()->array());
 
             // otherwise get keys using scan
             else {
                 int pos = 0;
-                do RedisInterface::scan(*this->redisServer, this->list, &elements, 0, fetchChunkSize, pos, &pos);
-                while(pos);
+                do {
+                    RedisServer::RedisResponse response = this->redisServer->hscan(this->list, QByteArray::number(pos), fetchChunkSize, pattern, RedisServer::RequestType::Syncron)->response();
+                    pos = response->cursor();
+                    elements.splice(elements.end(), response->array());
+                } while(pos);
             }
 
             // deserialize byte array data to Key Type
@@ -332,20 +331,23 @@ class RedisHash
             return list;
         }
 
-        QList<NORM2VALUE(Value)> values(int fetchChunkSize = -1)
+        QList<NORM2VALUE(Value)> values(int fetchChunkSize = -1, QByteArray pattern = "")
         {
             // create result data list
             QList<NORM2VALUE(Value)> list;
 
             // if fetch chunk size is smaller or equal 0, so exec hvals
             std::list<QByteArray> elements;
-            if(fetchChunkSize <= 0) RedisInterface::hvals(*this->redisServer, this->list, elements);
+            if(fetchChunkSize <= 0) elements.splice(elements.end(), this->redisServer->hvals(this->list, RedisServer::RequestType::Syncron)->response()->array());
 
             // otherwise get values using scan
             else {
                 int pos = 0;
-                do RedisInterface::scan(*this->redisServer, this->list, 0, &elements, fetchChunkSize, pos, &pos);
-                while(pos);
+                do {
+                    RedisServer::RedisResponse response = this->redisServer->hscan(this->list, QByteArray::number(pos), fetchChunkSize, pattern, RedisServer::RequestType::Syncron)->response();
+                    pos = response->cursor();
+                    elements.splice(elements.end(), response->array());
+                } while(pos);
             }
 
             // deserialize byte array data to Value Type
@@ -364,7 +366,7 @@ class RedisHash
             for(auto itr = keys.begin(); itr != keys.end(); itr++) {
                 sKeys << TypeSerializer<Key>::serialize(*itr, this->binarizeKey);
             }
-            std::list<QByteArray> sValues = RedisInterface::hmget(*this->redisServer, this->list, sKeys);
+            std::list<QByteArray> sValues = this->redisServer->hmget(this->list, sKeys, RedisServer::RequestType::Syncron)->response()->array();
 
             // deserialize values to Value Type and append it to values list
             QList<NORM2VALUE(Value)> values;
@@ -375,20 +377,23 @@ class RedisHash
             return values;
         }
 
-        QMap<NORM2VALUE(Key),NORM2VALUE(Value)> toMap(int fetchChunkSize = -1)
+        QMap<NORM2VALUE(Key),NORM2VALUE(Value)> toMap(int fetchChunkSize = -1, QByteArray pattern = "")
         {
             // create result data list
             QMap<NORM2VALUE(Key),NORM2VALUE(Value)> map;
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
             std::list<QByteArray> elements;
-            if(fetchChunkSize <= 0) RedisInterface::hgetall(*this->redisServer, this->list, elements);
+            if(fetchChunkSize <= 0) elements.splice(elements.end(), this->redisServer->hgetall(this->list, RedisServer::RequestType::Syncron)->response()->array());
 
             // otherwise get key values using scan
             else {
                 int pos = 0;
-                do RedisInterface::scan(*this->redisServer, this->list, elements, fetchChunkSize, pos, &pos);
-                while(pos);
+                do {
+                    RedisServer::RedisResponse response = this->redisServer->hscan(this->list, QByteArray::number(pos), fetchChunkSize, pattern, RedisServer::RequestType::Syncron)->response();
+                    pos = response->cursor();
+                    elements.splice(elements.end(), response->array());
+                } while(pos);
             }
 
             // deserialize the data
@@ -402,20 +407,23 @@ class RedisHash
             return map;
         }
 
-        QHash<NORM2VALUE(Key),NORM2VALUE(Value)> toHash(int fetchChunkSize = -1)
+        QHash<NORM2VALUE(Key),NORM2VALUE(Value)> toHash(int fetchChunkSize = -1, QByteArray pattern = "")
         {
             // create result data list
             QHash<NORM2VALUE(Key),NORM2VALUE(Value)> hash;
 
             // if fetch chunk size is smaller or equal 0, so exec hgetall
             std::list<QByteArray> elements;
-            if(fetchChunkSize <= 0) RedisInterface::hgetall(*this->redisServer, this->list, elements);
+            if(fetchChunkSize <= 0) elements.splice(elements.end(), this->redisServer->hgetall(this->list, RedisServer::RequestType::Syncron)->response()->array());
 
             // otherwise get key values using scan
             else {
                 int pos = 0;
-                do RedisInterface::scan(*this->redisServer, this->list, elements, fetchChunkSize, pos, &pos);
-                while(pos);
+                do {
+                    RedisServer::RedisResponse response = this->redisServer->hscan(this->list, QByteArray::number(pos), fetchChunkSize, pattern, RedisServer::RequestType::Syncron)->response();
+                    pos = response->cursor();
+                    elements.splice(elements.end(), response->array());
+                } while(pos);
             }
 
             // deserialize the data
