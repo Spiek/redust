@@ -39,11 +39,11 @@ class TestTemplateHelper
                 }
             }
 
-            // if we insert the data async, we wait until all set operations are processed by redis before continue
-            if(mode == RedisServer::RequestType::Asyncron || mode == RedisServer::RequestType::PipeLine) {
-                // execute pipeline (if available)
-                redisServer.executePipeline();
+            // execute pipeline request
+            if(mode == RedisServer::RequestType::PipeLine) redisServer.executePipeline();
 
+            // if we insert the data async, we wait until all set operations are processed by redis before continue
+            else if(mode == RedisServer::RequestType::Asyncron) {
                 // after all data was written to redis, we check constantly if all data were inserted into redis
                 // after every check we wait one second (a)syncron, if no data was inserted during 10 checks, we fail
                 for(int failed = 0; failed <= 10; failed++) {
@@ -52,6 +52,8 @@ class TestTemplateHelper
                     if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
                 }
             }
+
+            VERIFY2(rHash.count() == data.count(), QString("Expect a list with %1-entries, but just got %2").arg(data.count()).arg(rHash.count()));
         }
 
         static void hashCheck(QMap<Key, Value> data, int keyIndex, bool binarizeKey = true, bool binarizeValue = true)
