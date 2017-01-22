@@ -323,8 +323,9 @@ class RedisHash
             }
 
             // deserialize byte array data to Key Type
-            for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
+            for(auto itr = elements.begin(); itr != elements.end(); itr++) {
                 list.append(TypeSerializer<Key>::deserialize(*itr, this->binarizeKey));
+                if(fetchChunkSize > 0) itr++;
             }
 
             // return list
@@ -351,7 +352,8 @@ class RedisHash
             }
 
             // deserialize byte array data to Value Type
-            for(auto itr = elements.begin(); itr != elements.end(); itr = elements.erase(itr)) {
+            for(auto itr = elements.begin(); itr != elements.end(); itr++) {
+                if(fetchChunkSize > 0) itr++;
                 list.append(TypeSerializer<Value>::deserialize(*itr, this->binarizeValue));
             }
 
