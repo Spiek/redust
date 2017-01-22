@@ -41,7 +41,7 @@ class RedisServer : public QObject
 
                 // Error
                 bool hasError()  { return this->_type == RedisResponseData::Type::Error; }
-                QString& error() { return this->_errorString; }
+                QString error() { return this->_errorString; }
                 void error(QString error)
                 {
                     this->_type = RedisResponseData::Type::Error;
@@ -49,7 +49,7 @@ class RedisServer : public QObject
                 }
 
                 // String
-                QByteArray& string() { return this->_string; }
+                QByteArray string() { return this->_string; }
                 void string(QByteArray string)
                 {
                     this->_type = RedisResponseData::Type::String;
@@ -57,7 +57,7 @@ class RedisServer : public QObject
                 }
 
                 // Integer
-                int& integer() { return this->_integer; }
+                int integer() { return this->_integer; }
                 void integer(int integer)
                 {
                     this->_type = RedisResponseData::Type::Integer;
@@ -71,7 +71,8 @@ class RedisServer : public QObject
                 }
 
                 // Array
-                std::list<QByteArray>& array() { return this->_array; }
+                std::list<QByteArray> array() { return this->_array; }
+                std::list<QByteArray>& arrayRef() { return this->_array; }
                 void array(std::list<QByteArray> array)
                 {
                     this->_type = RedisResponseData::Type::Array;
@@ -79,7 +80,8 @@ class RedisServer : public QObject
                 }
 
                 // Array List
-                std::list<std::list<QByteArray>>& arrayList() { return this->_arrayList; }
+                std::list<std::list<QByteArray>> arrayList() { return this->_arrayList; }
+                std::list<std::list<QByteArray>>& arrayListRef() { return this->_arrayList; }
                 void arrayList(std::list<std::list<QByteArray>> arrayList)
                 {
                     this->_type = RedisResponseData::Type::ArrayList;
@@ -87,7 +89,7 @@ class RedisServer : public QObject
                 }
 
                 // SCAN cursor
-                int& cursor() { return this->_cursor; }
+                int cursor() { return this->_cursor; }
                 void cursor(int cursor) { this->_cursor = cursor; }
 
                 // Socket
@@ -116,8 +118,8 @@ class RedisServer : public QObject
             RedisRequestData(RequestType type, QTcpSocket* socket) : _type(type), _response(new RedisResponseData(socket)), _socket(socket) { }
 
             // Error
-            bool hasError()  { return !this->_errorString.isEmpty(); }
-            QString& error() { return  this->_errorString; }
+            bool hasError()  { return !this->_errorString.isEmpty() && !this->response()->hasError(); }
+            QString error() { return  this->_errorString; }
             void error(QString error) { this->_errorString = error; }
 
             // socket
@@ -129,15 +131,15 @@ class RedisServer : public QObject
 
             // custom data
             bool hasCustomData()  { return !this->_customData.isNull(); }
-            QVariant& customData() { return this->_customData; }
+            QVariant customData() { return this->_customData; }
             void customData(QVariant customData) { this->_customData = customData; }
 
             // executed redis command
-            QByteArray& cmd() { return this->_cmd; }
+            QByteArray cmd() { return this->_cmd; }
             void cmd(QByteArray cmd) { this->_cmd = cmd; }
 
             // request type
-            RequestType& type() { return this->_type; }
+            RequestType type() { return this->_type; }
 
             // internal data
             RequestType _type;
@@ -186,8 +188,8 @@ class RedisServer : public QObject
         RedisRequest lpush(QByteArray key, std::list<QByteArray> values, RequestType type = RequestType::Asyncron);
         RedisRequest rpush(QByteArray key, QByteArray value, RequestType type = RequestType::Asyncron);
         RedisRequest rpush(QByteArray key, std::list<QByteArray> values, RequestType type = RequestType::Asyncron);
-        bool blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
-        bool brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
+        RedisServer::RedisRequest blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
+        RedisServer::RedisRequest brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout = 0, RequestType type = RequestType::WriteOnly);
         RedisRequest llen(QByteArray key, RequestType type = RequestType::Syncron);
 
         // Hash Redis Functions

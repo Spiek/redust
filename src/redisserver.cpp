@@ -147,6 +147,9 @@ RedisServer::RedisRequest RedisServer::execRedisCommand(std::list<QByteArray> cm
 
 bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
 {
+    // pointer check
+    if(request.isNull()) return false;
+
     // build response
     QTcpSocket* socket = request->socket();
     RedisResponse response = request->response();
@@ -262,7 +265,7 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
                 currentElementCount = length == -1 ? 1 : length + 1;
                 allElementsCount += currentElementCount;
 
-                currentArray = &*response->arrayList().insert(--response->arrayList().begin(), std::list<QByteArray>());
+                currentArray = &*response->arrayListRef().insert(--response->arrayListRef().begin(), std::list<QByteArray>());
 
                 // handle null multi bulk by creating single null value in array and exit loop
                 if(length == -1) currentArray->push_back(QByteArray());
@@ -280,16 +283,16 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
                 rawData = protoSegmentNext;
             }
             if(currentElementCount == 1 && allElementsCount > 1) {
-                currentArray = &*--response->arrayList().end();
+                currentArray = &*--response->arrayListRef().end();
                 currentElementCount = allElementsCount;
             }
         } while(--currentElementCount && --allElementsCount);
 
         // if we have less or equal one item, return a RedisArray otherwise a RedisArrayList
-        if(response->arrayList().size() > 1) response->type(RedisResponseData::Type::ArrayList);
-        else if(response->arrayList().size() == 1) {
-            response->array(*response->arrayList().begin());
-            response->arrayList().clear();
+        if(response->arrayListRef().size() > 1) response->type(RedisResponseData::Type::ArrayList);
+        else if(response->arrayListRef().size() == 1) {
+            response->array(*response->arrayListRef().begin());
+            response->arrayListRef().clear();
         }
     }
 
@@ -306,9 +309,9 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
        request->cmd() == "SSCAN" ||
        request->cmd() == "ZSCAN")
     {
-        response->cursor(response->arrayList().front().front().toInt());
-        response->array(response->arrayList().back());
-        response->arrayList().clear();
+        response->cursor(response->arrayListRef().front().front().toInt());
+        response->array(response->arrayListRef().back());
+        response->arrayListRef().clear();
     }
 
     // everything okay
@@ -396,22 +399,22 @@ RedisServer::RedisRequest RedisServer::rpush(QByteArray key, std::list<QByteArra
     return this->execRedisCommand(values, type);
 }
 
-bool RedisServer::blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
+RedisServer::RedisRequest RedisServer::blpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
 {
     // Build and execute Command
     // src: http://redis.io/commands/BLPOP lists timeout
     lists.push_front("BLPOP");
     lists.push_back(QByteArray::number(timeout));
-    return !this->execRedisCommand(lists, type, socket)->hasError();
+    return this->execRedisCommand(lists, type, socket);
 }
 
-bool RedisServer::brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
+RedisServer::RedisRequest RedisServer::brpop(QTcpSocket *socket, std::list<QByteArray> lists, int timeout, RequestType type)
 {
     // Build and execute Command
     // src: http://redis.io/commands/BRPOP lists timeout
     lists.push_front("BRPOP");
     lists.push_back(QByteArray::number(timeout));
-    return !this->execRedisCommand(lists, type, socket)->hasError();
+    return this->execRedisCommand(lists, type, socket);
 }
 
 RedisServer::RedisRequest RedisServer::llen(QByteArray key, RequestType type)
