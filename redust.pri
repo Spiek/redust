@@ -17,6 +17,7 @@ HEADERS += $$PWD/include/redust/RedisHash \
 INCLUDEPATH += $$PWD/include
 
 # protobuffer support
-contains(DEFINES, REDISMAP_SUPPORT_PROTOBUF) {
+defined(REDUST_SUPPORT_PROTOBUF,var) {
+    DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
     LIBS += -lprotobuf
 }
