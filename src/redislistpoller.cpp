@@ -1,12 +1,35 @@
 #include "redust/redislistpoller.h"
 
-RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, QObject *parent) : QObject(parent)
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, QObject *parent) : QObject(parent)
 {
-    // save keys in deserialized form
-    this->intTimeout = timeout;
-    this->lstKeys = keys;
     this->server = &server;
+    this->lstKeys = keys;
+    this->intTimeout = timeout;
+}
+
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, int timeout, QObject *parent) : QObject(parent)
+{
+    this->server = &server;
+    this->lstKeys = keys;
+    this->intTimeout = timeout;
     this->enumPollTimeType = pollTimeType;
+}
+
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PopPosition popPosition, int timeout, QObject *parent) : QObject(parent)
+{
+    this->server = &server;
+    this->lstKeys = keys;
+    this->intTimeout = timeout;
+    this->enumPopPosition = popPosition;
+}
+
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, PopPosition popPosition, int timeout, QObject *parent) : QObject(parent)
+{
+    this->server = &server;
+    this->lstKeys = keys;
+    this->intTimeout = timeout;
+    this->enumPollTimeType = pollTimeType;
+    this->enumPopPosition = popPosition;
 }
 
 RedisListPoller::~RedisListPoller()
@@ -42,7 +65,9 @@ bool RedisListPoller::pop()
     if(!this->acquireSocket()) return false;
 
     // run blpop and return result
-    this->currentRequest = this->server->blpop(this->socket, this->lstKeys, this->intTimeout);
+    this->currentRequest = this->enumPopPosition == PopPosition::Begin ?
+                           this->server->blpop(this->socket, this->lstKeys, this->intTimeout) :
+                           this->server->brpop(this->socket, this->lstKeys, this->intTimeout);
     return !this->currentRequest->hasError();
 }
 
