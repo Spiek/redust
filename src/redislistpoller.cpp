@@ -1,11 +1,10 @@
 #include "redust/redislistpoller.h"
 
-RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, RedisInterface::Position popDirection, QObject *parent) : QObject(parent)
+RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, QObject *parent) : QObject(parent)
 {
     // save keys in deserialized form
     this->intTimeout = timeout;
     this->lstKeys = keys;
-    this->popDirection = popDirection;
     this->server = &server;
     this->enumPollTimeType = pollTimeType;
 }
@@ -43,7 +42,8 @@ bool RedisListPoller::pop()
     if(!this->acquireSocket()) return false;
 
     // run blpop and return result
-    return RedisInterface::bpop(this->socket, this->lstKeys, this->popDirection, this->intTimeout);
+    this->currentRequest = this->server->blpop(this->socket, this->lstKeys, this->intTimeout);
+    return !this->currentRequest->hasError();
 }
 
 void RedisListPoller::handleResponse()
@@ -52,21 +52,21 @@ void RedisListPoller::handleResponse()
     if(!this->socket) return;
 
     // parse result and exit on fail
-    RedisInterface::RedisData result = RedisInterface::parseResponse(this->socket);
-    if(result.type == RedisInterface::RedisData::Type::Error) return;
+    if(!this->server->parseResponse(this->currentRequest) || this->currentRequest->hasError()) return;
+    std::list<QByteArray> result = this->currentRequest->response()->array();
 
     // if no element could be popped, timeout reached
-    if(result.array.size() == 1 && result.array.front().isNull()) {
+    if(result.size() == 1 && result.front().isNull()) {
         // if user only want to loop until timeout reached, so suspend
         if((this->enumPollTimeType & PollTimeType::UntilTimeout) == PollTimeType::UntilTimeout) this->suspended = true;
         emit this->timeoutReached();
     }
 
     // otherwise inform outside world about popped element
-    else if(result.array.size() == 2) {
+    else if(result.size() == 2) {
         // if user only want to loop until first pop, so suspend
         if((this->enumPollTimeType & PollTimeType::UntilFirstPop) == PollTimeType::UntilFirstPop) this->suspended = true;
-        emit this->popped(result.array.front(), result.array.back());
+        emit this->popped(result.front(), result.back());
     }
 
     // if suspended flag is set, free the socket instantly and don't start over
