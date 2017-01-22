@@ -1,7 +1,7 @@
 #include <QtTest/QtTest>
 
-#include "redust/redishash.h"
 #include "redust/redisserver.h"
+#include "redust/redishash.h"
 #include "redust/redislistpoller.h"
 
 // const variables
@@ -27,7 +27,7 @@ class TestTemplateHelper
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
             RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
-                if(!rHash.insert(itr.key(), itr.value(), sync)) {
+                if(!rHash.insert(itr.key(), itr.value(), true, sync ? RedisServer::RequestType::Syncron : RedisServer::RequestType::Asyncron)) {
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
                          .arg(strMode)
                          .arg(strHash.data())
@@ -157,7 +157,7 @@ class TestTemplateHelper
             qInfo(" - Loop and take all elements one by one (check the returned values if it exists in the list), until the list is empty");
             for(Key key : data.keys()) {
                 bool result = false;
-                if(data.value(key) != rHash.take(key, true, &result) || !result) {
+                if(data.value(key) != rHash.take(key, RedisServer::RequestType::Syncron, &result) || !result) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
                          .arg(TypeSerializer<Key>::serialize(key, binarizeKey).toHex().data())
                          .arg(TypeSerializer<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
@@ -191,8 +191,8 @@ void TestRedisHash::initTestCase()
 
 void TestRedisHash::clear()
 {
-    for(QByteArray key : RedisInterface::keys(redisServer, GENKEYNAME("") + "*")) {
-        if(RedisInterface::del(redisServer, key, false)) qInfo("Delete key %s", qPrintable(key));
+    for(QByteArray key : redisServer.keys(GENKEYNAME("") + "*")->response()->array()) {
+        if(!redisServer.del(key)->hasError()) qInfo("Delete key %s", qPrintable(key));
         else FAIL(QString("Cannot Delete key %1").arg(QString(key)));
     }
 }
@@ -200,21 +200,21 @@ void TestRedisHash::clear()
 void TestRedisHash::redispoller()
 {
     // init vars
-    int pushValuesCount = GENINTRANDRANGE(2234,24543);
+    int pushValuesCount = 10000;
 
     // init poller and signal spyer
-    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisListPoller::PollTimeType::UntilTimeout, RedisInterface::Position::Begin);
+    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisListPoller::PollTimeType::UntilTimeout);
     QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
     poller.start();
 
     // push pushValuesCount left
     for(int i = 0; i < pushValuesCount; i++) {
-        RedisInterface::push(redisServer, "hallo", QByteArray::fromRawData((char*)&i, sizeof(int)));
+        redisServer.lpush("hallo", QByteArray::fromRawData((char*)&i, sizeof(int)));
     }
 
     // push pushValuesCount right
     for(int i = 0; i < pushValuesCount; i++) {
-        RedisInterface::push(redisServer, "test", QByteArray::fromRawData((char*)&i, sizeof(int)), RedisInterface::Position::End);
+        redisServer.rpush("test", QByteArray::fromRawData((char*)&i, sizeof(int)));
     }
 
     // wait until timeout reached
