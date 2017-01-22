@@ -25,7 +25,7 @@ class TestTemplateHelper
             QByteArray strHash = GENKEYNAME(keyIndex);
             QString strMode = mode == RedisServer::RequestType::PipeLine ? "pipeline" :
                               mode == RedisServer::RequestType::Asyncron ? "asyncron" :
-                              mode == RedisServer::RequestType::Syncron  ? "syncron" : "";                                                                           "syncron";
+                              mode == RedisServer::RequestType::Syncron  ? "syncron" : "";
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
             RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
@@ -38,7 +38,6 @@ class TestTemplateHelper
                     );
                 }
             }
-
 
             // if we insert the data async, we wait until all set operations are processed by redis before continue
             if(mode == RedisServer::RequestType::Asyncron || mode == RedisServer::RequestType::PipeLine) {
@@ -190,7 +189,7 @@ void TestRedisHash::redispoller()
     int pushValuesCount = 10000;
 
     // init poller and signal spyer
-    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisListPoller::PollTimeType::UntilTimeout);
+    RedisListPoller poller(redisServer, {"hallo", "test"}, RedisListPoller::PollTimeType::UntilTimeout, 1);
     QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
     poller.start();
 

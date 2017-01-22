@@ -63,7 +63,7 @@ class TypeSerializer
         }
         static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
         static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
-            NORM2VALUE(T) t;
+            NORM2VALUE(T) t = {};
             if(!value) return t;
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
                 // copy available data to end of t and set all data before to \0 (this reverts the byte saving in serialisation)
