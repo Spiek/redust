@@ -318,15 +318,29 @@ bool RedisServer::parseResponse(RedisServer::RedisRequest& request)
     return true;
 }
 
-int RedisServer::executePipeline(bool waitForBytesWritten)
+int RedisServer::executePipeline(RequestType type)
 {
+    // exit if we have no pipeline data to write
     if(this->pendingPipelineRequests.isEmpty()) return 0;
-    int count = this->pendingPipelineData.count();
+
+    // move pipeline requests to pendingRequests and write data to socket
+    int count = this->pendingPipelineRequests.count();
     this->pendingRequests.append(this->pendingPipelineRequests);
     this->socketReadWrite->write(this->pendingPipelineData);
     this->pendingPipelineRequests.clear();
     this->pendingPipelineData.clear();
-    if(waitForBytesWritten) this->socketReadWrite->waitForBytesWritten();
+
+    // if user want to WriteOnlyBlocked just wait until data was written
+    if(type == RequestType::WriteOnlyBlocked) this->socketReadWrite->waitForBytesWritten();
+
+    // if user want to write the data syncron, wait until all pending requests are handled by the server
+    else if(type == RequestType::Syncron) {
+        QEventLoop loop;
+        QObject::connect(this, &RedisServer::redisRequestsFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+    }
+
+    // return send data packets
     return count;
 }
 
@@ -598,5 +612,5 @@ void RedisServer::handleRedisResponse()
         bool result = this->parseResponse(request);
         this->redisResponseFinished(request, result);
     }
+    if(this->pendingRequests.isEmpty()) emit this->redisRequestsFinished();
 }
-

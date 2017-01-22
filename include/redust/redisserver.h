@@ -3,6 +3,7 @@
 
 #include <QTcpSocket>
 #include <QQueue>
+#include <QEventLoop>
 
 class RedisServer : public QObject
 {
@@ -153,6 +154,7 @@ class RedisServer : public QObject
 
     signals:
         void redisResponseFinished(RedisServer::RedisRequest request, bool success);
+        void redisRequestsFinished();
 
     public:
         enum class ConnectionType {
@@ -173,7 +175,7 @@ class RedisServer : public QObject
         // General Redis Protocol Implementation
         RedisRequest execRedisCommand(std::list<QByteArray> cmd, RequestType type, QTcpSocket *socket = 0);
         bool parseResponse(RedisRequest &request);
-        int executePipeline(bool waitForBytesWritten = false);
+        int executePipeline(RequestType type = RequestType::Syncron);
 
         // General Redis Functions
         RedisRequest ping(QByteArray data = "", RequestType = RequestType::Asyncron);
