@@ -264,7 +264,7 @@ class RedisHash
             return value;
         }
 
-        bool insert(Key key, Value value, bool replace = false, RedisServer::RequestType type = RedisServer::RequestType::Asyncron)
+        bool insert(Key key, Value value, RedisServer::RequestType type = RedisServer::RequestType::Asyncron, bool replace = true)
         {
             if(replace) {
                 return !this->redisServer->hset(this->list,

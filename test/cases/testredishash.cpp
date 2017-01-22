@@ -29,7 +29,7 @@ class TestTemplateHelper
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
             RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
-                if(!rHash.insert(itr.key(), itr.value(), true, mode)) {
+                if(!rHash.insert(itr.key(), itr.value(), mode)) {
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
                          .arg(strMode)
                          .arg(strHash.data())
