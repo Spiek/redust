@@ -155,7 +155,7 @@ class RedisHash
                 // if we couldn't get any items then we reached the end
                 // Note: this could happend if we try to get data from an non-existing/empty key
                 //       if this is the case then we call us again so that this iterator is set to end
-                return this->queueElements.size() > 0 ? this->refillQueue() : true;
+                return this->queueElements.empty() ? this->refillQueue() : true;
             }
 
             void loadEntry(bool key, bool value)
