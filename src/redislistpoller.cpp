@@ -2,34 +2,22 @@
 
 RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout, QObject *parent) : QObject(parent)
 {
-    this->server = &server;
-    this->lstKeys = keys;
-    this->intTimeout = timeout;
+    this->init(server, keys, timeout);
 }
 
 RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, int timeout, QObject *parent) : QObject(parent)
 {
-    this->server = &server;
-    this->lstKeys = keys;
-    this->intTimeout = timeout;
-    this->enumPollTimeType = pollTimeType;
+   this->init(server, keys, timeout, pollTimeType);
 }
 
 RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PopPosition popPosition, int timeout, QObject *parent) : QObject(parent)
 {
-    this->server = &server;
-    this->lstKeys = keys;
-    this->intTimeout = timeout;
-    this->enumPopPosition = popPosition;
+    this->init(server, keys, timeout, PollTimeType::Forever, popPosition);
 }
 
 RedisListPoller::RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, PopPosition popPosition, int timeout, QObject *parent) : QObject(parent)
 {
-    this->server = &server;
-    this->lstKeys = keys;
-    this->intTimeout = timeout;
-    this->enumPollTimeType = pollTimeType;
-    this->enumPopPosition = popPosition;
+    this->init(server, keys, timeout, pollTimeType, popPosition);
 }
 
 RedisListPoller::~RedisListPoller()
@@ -124,4 +112,17 @@ void RedisListPoller::releaseSocket()
     this->disconnect(this->socket);
     this->server->freeBlockedConnection(this->socket);
     this->socket = 0;
+}
+
+void RedisListPoller::init(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType, PopPosition popPosition)
+{
+    // init vars
+    this->server = &server;
+    this->lstKeys = keys;
+    this->intTimeout = timeout;
+    this->enumPollTimeType = pollTimeType;
+    this->enumPopPosition = popPosition;
+
+    // reserve blocked connection
+    this->server->initConnections(false, false, 1);
 }

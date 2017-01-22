@@ -26,10 +26,10 @@ class RedisListPoller : public QObject
         };
 
         // con/deconstructors
-        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, int timeout = 0, QObject *parent = 0);
-        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, PollTimeType pollTimeType, int timeout = 0, QObject *parent = 0);
-        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, PopPosition popPosition, int timeout = 0, QObject *parent = 0);
-        RedisListPoller(RedisServer &server, std::list<QByteArray> lstKeys, PollTimeType pollTimeType, PopPosition popPosition, int timeout = 0, QObject *parent = 0);
+        RedisListPoller(RedisServer &server, std::list<QByteArray> keys, int timeout = 0, QObject *parent = 0);
+        RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, int timeout = 0, QObject *parent = 0);
+        RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PopPosition popPosition, int timeout = 0, QObject *parent = 0);
+        RedisListPoller(RedisServer &server, std::list<QByteArray> keys, PollTimeType pollTimeType, PopPosition popPosition, int timeout = 0, QObject *parent = 0);
         ~RedisListPoller();
 
         // running control
@@ -58,6 +58,9 @@ class RedisListPoller : public QObject
         void releaseSocket();
 
     private:
+        // constructor generalizer
+        void init(RedisServer &server, std::list<QByteArray> keys, int timeout, PollTimeType pollTimeType = PollTimeType::Forever, PopPosition popPosition = PopPosition::Begin);
+
         int intTimeout;
         bool suspended = false;
         PollTimeType enumPollTimeType = PollTimeType::Forever;
