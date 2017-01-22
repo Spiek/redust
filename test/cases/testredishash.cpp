@@ -20,14 +20,16 @@ template<typename Key, typename Value>
 class TestTemplateHelper
 {
     public:
-        static void hashInsert(QMap<Key, Value>& data, int keyIndex, bool sync, bool binarizeKey = true, bool binarizeValue = true)
+        static void hashInsert(QMap<Key, Value>& data, int keyIndex, RedisServer::RequestType mode, bool binarizeKey = true, bool binarizeValue = true)
         {
             QByteArray strHash = GENKEYNAME(keyIndex);
-            QString strMode = !sync ? "asyncron" : "syncron";
+            QString strMode = mode == RedisServer::RequestType::PipeLine ? "pipeline" :
+                              mode == RedisServer::RequestType::Asyncron ? "asyncron" :
+                              mode == RedisServer::RequestType::Syncron  ? "syncron" : "";                                                                           "syncron";
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
             RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
-                if(!rHash.insert(itr.key(), itr.value(), true, sync ? RedisServer::RequestType::Syncron : RedisServer::RequestType::Asyncron)) {
+                if(!rHash.insert(itr.key(), itr.value(), true, mode)) {
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
                          .arg(strMode)
                          .arg(strHash.data())
@@ -39,31 +41,16 @@ class TestTemplateHelper
 
 
             // if we insert the data async, we wait until all set operations are processed by redis before continue
-            if(!sync) {
-                QTcpSocket* socket = redisServer.requestConnection(RedisServer::ConnectionType::WriteOnly);
-
-                // wait syncron until all data was written to the redis server
-                // Note: to work around random write fails on windows, we waitForBytesWritten until it succeed
-                while(socket->bytesToWrite()) while(!socket->waitForBytesWritten());
+            if(mode == RedisServer::RequestType::Asyncron || mode == RedisServer::RequestType::PipeLine) {
+                // execute pipeline (if available)
+                redisServer.executePipeline();
 
                 // after all data was written to redis, we check constantly if all data were inserted into redis
                 // after every check we wait one second (a)syncron, if no data was inserted during 10 checks, we fail
-                int oldCount = 0;
-                int failed = 0;
-                int localDataCount = data.count();
-                while(true) {
-                    int count = rHash.count();
-                    if(count == localDataCount) break;
-
-                    // handle fail
-                    failed = count == oldCount ? failed + 1 : 0;
-                    if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
-
-                    // wait for redis to process requests
-                    qInfo(" - Wait additional second for redis to process our inserts (%d / %d allready inserted!)...", count, localDataCount);
+                for(int failed = 0; failed <= 10; failed++) {
+                    if(rHash.count() == data.count()) break;
                     QTest::qWait(1000);
-
-                    oldCount = count;
+                    if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
                 }
             }
         }
@@ -240,12 +227,11 @@ void TestRedisHash::hash()
             i++;
             data.insert(i + GENFLOATRANDRANGE(0, 0.9), i + GENINTRANDRANGE(2343, 2324252) + GENFLOATRANDRANGE(0, 0.9));
         };
-        TestTemplateHelper<float, double>::hashInsert(data, ++index, false, true, true);
-        TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
-        qInfo();
-        TestTemplateHelper<float, double>::hashInsert(data, ++index, true, true, true);
-        TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
-        qInfo();
+        for(RedisServer::RequestType type : {RedisServer::RequestType::PipeLine, RedisServer::RequestType::Asyncron, RedisServer::RequestType::Syncron}) {
+            TestTemplateHelper<float, double>::hashInsert(data, ++index, type, true, true);
+            TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
+            qInfo();
+        }
     }
 
     // <QByteArray, int>-Test
@@ -258,12 +244,11 @@ void TestRedisHash::hash()
             }
             data.insert(content, GENINTRANDRANGE(563,545321));
         };
-
-        TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, false, true, true);
-        TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
-        qInfo();
-        TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, true, true, true);
-        TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
+        for(RedisServer::RequestType type : {RedisServer::RequestType::PipeLine, RedisServer::RequestType::Asyncron, RedisServer::RequestType::Syncron}) {
+            TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, type, true, true);
+            TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
+            qInfo();
+        }
     }
 }
 
