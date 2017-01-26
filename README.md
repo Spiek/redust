@@ -17,7 +17,7 @@ All Redis Templates are able to handle the following Template types as Key or Va
  - All classes which inherits from google::protobuf::Message
  - All Integral Types are able to become serialized into binary or string format
 
-<details><summary>**Redis Hash**</summary>
+<details><summary>**Redis Hash** - [QHash][qhash-public-signature] like Redis interface </summary>
 
 RedisHash< Key, Value > - Hash-table-based dictionary
 The following characteristics apply:
@@ -108,7 +108,102 @@ HDEL | MYREDISKEY | 956
 ## Redis Tools
 RedUST has additional Tools to simplify different tasks
 
-<details><summary>**Redis List Poller**</summary>
+
+<details><summary>**RedisServer** - redis server network/command interface</summary>
+
+The RediServer act as redis interface, it handles redis network connections and gives easy high level access to all kind of redis commands.
+
+This Example demonstrate some of these functions:
+```c++
+#include <QCoreApplication>
+#include <redust/RedisServer>
+
+int main(int argc, char** argv)
+{
+    QCoreApplication a(argc, argv);
+
+    // create redis connection
+    RedisServer server("127.0.0.1", 6379);
+
+    ///
+    /// List Function Examples
+    ///
+
+    // delete list
+    qDebug("The list mylist has%s been deleted",
+           server.del("mylist")->response()->integer() == 0 ? " NOT" : "");
+
+    // async multi list insertation
+    server.rpush("mylist", {"first", "second"}, RedisServer::RequestType::Asyncron);
+
+    // syncron list insertation (including result)
+    qDebug("The list mylist has after insert %i-entries",
+           server.lpush("mylist", "third", RedisServer::RequestType::Syncron)->response()->integer());
+
+    // pipeline inseration
+    RedisServer::RedisRequest request = server.lpush("mylist", "fourth", RedisServer::RequestType::PipeLine);
+    server.rpush("mylist", "fifth", RedisServer::RequestType::PipeLine);
+
+    // syncron pipeline execution (async is default!)
+    qDebug("%i pipeline commands executed",
+           server.executePipeline(RedisServer::RequestType::Syncron));
+
+    // access redis server results
+    qDebug("RedisResult of \"lpush mylist third\" is %i",
+           request->response()->integer());
+
+    // get list count
+    qDebug("Redis list mylist has currently %i entries",
+           server.llen("mylist")->response()->integer());
+
+
+    ///
+    /// Hash Function Examples
+    ///
+
+    // try to delete the hashlist "myhash"
+    qDebug("The hashlist myhash has%s been deleted",
+           server.del("myhash")->response()->integer() == 0 ? " NOT" : "");
+
+    // multi syncron hash insert
+    server.hmset("myhash", {
+                            {"myfirstkey", "myfirstvalue"},
+                            {"myfirstkey", "myfirstvalue"}
+                           }, RedisServer::RequestType::Syncron);
+
+    // access value
+    qDebug("myfirstkey has value %s",
+           qPrintable(server.hget("myhash", "myfirstkey")->response()->string()));
+
+    return a.exec();
+}
+```
+Prints:
+```
+The list mylist has been deleted
+The list mylist has after insert 1-entries
+2 pipeline commands executed
+RedisResult of "lpush mylist third" is 4
+Redis list mylist has currently 5 entries
+The hashlist myhash has been deleted
+myfirstkey has value myfirstvalue
+```
+... and generates the following Redis Command sequence:
+
+Command  | Parameter 1 | Parameter 2 | Parameter 3
+:-------- | :------- | :--- | :--- 
+DEL | mylist
+LPUSH | mylist | third
+RPUSH | mylist | first | second
+LPUSH | mylist | fourth
+RPUSH | mylist | fifth
+LLEN | mylist
+DEL | myhash
+HMSET | myhash | myfirstkey | myfirstvalue
+HGET | myhash | myfirstkey
+</details>
+
+<details><summary>**RedisListPoller** - async blocking pop</summary>
 
 The Redis list poller provide a async [BLPOP][blpop-explained] or [BRPOP][brpop-explained] for new elements in giving lists.  
 As soon as redis send an element back to the client the class emit the popped()-Signal with the popped element,  
