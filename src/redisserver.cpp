@@ -405,7 +405,7 @@ RedisServer::RedisRequest RedisServer::rpush(QByteArray key, std::list<QByteArra
 {
     // Build and execute Command
     // RPUSH key value [value]...
-    // src: http://redis.io/commands/lpush
+    // src: http://redis.io/commands/rpush
     values.push_front(key);
     values.push_front("RPUSH");
 

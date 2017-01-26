@@ -26,9 +26,7 @@ The following characteristics apply:
  
 Example:
 ```c++
-#include <QString>
-#include <QDebug>
-#include <redust/redishash.h>
+#include <redust/RedisHash>
 
 int main()
 {
@@ -39,8 +37,8 @@ int main()
     RedisHash<qint16, QString> rhash(server, "MYREDISKEY", false, false);
 
     // insert values
-    rhash.insert(123, "This is a Test Insert 1");
-    rhash.insert(956, "This is a Test Insert 2");
+    rhash.insert(123, "This is a Test Insert 1", RedisServer::RequestType::Syncron);
+    rhash.insert(956, "This is a Test Insert 2", RedisServer::RequestType::Syncron);
 
     // get values
     qDebug("%s", qPrintable(rhash.value(123)));
@@ -117,9 +115,7 @@ The RedisListPoller can be used to provide multiple application atomic (in a rou
 Example:   
 ```c++
 #include <QCoreApplication>
-#include <QString>
-#include <QDebug>
-#include <redust/redislistpoller.h>
+#include <redust/RedisListPoller>
 
 int main()
 {
@@ -131,11 +127,11 @@ int main()
     
     // push data into redis lists
     // Note: we force a syncron execution here because we want that redis insert the data before we start polling!
-    RedisInterface::push(server, "zuzu", {"bla", "blub"}, RedisInterface::Position::Begin, true);
-    RedisInterface::push(server, "test", {"bla", "blub"}, RedisInterface::Position::End, true);
-    
+    qDebug("Now we have %i elements in the list list1", server.rpush("list1", {"val1", "val2"}, RedisServer::RequestType::Syncron)->response()->integer());
+    qDebug("Now we have %i elements in the list list2", server.rpush("list2", {"val3", "val4"}, RedisServer::RequestType::Syncron)->response()->integer());
+
     // start list poller for lists test and zuzu with a timeout of 1 second until timeout reached
-    RedisListPoller listPoller(server, {"test", "zuzu"}, 1, RedisListPoller::RunLevel::UntilTimeout);
+    RedisListPoller listPoller(server, {"list1", "list2"});
     QObject::connect(&listPoller, &RedisListPoller::popped, [](QByteArray list, QByteArray value) {
         qDebug("Popped %s.%s", qPrintable(list), qPrintable(value));
     });
