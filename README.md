@@ -17,7 +17,9 @@ All Redis Templates are able to handle the following Template types as Key or Va
  - All classes which inherits from google::protobuf::Message
  - All Integral Types are able to become serialized into binary or string format
 
-### RedisHash< Key, Value > - Hash-table-based dictionary
+<details><summary>**Redis Hash**</summary>
+
+RedisHash< Key, Value > - Hash-table-based dictionary
 The following characteristics apply:
  - get/set all data in a [Redis hash][redis-hashes-explained] in the redis server
  - reimplement all possible public function signatures of [QHash][qhash-public-signature]
@@ -99,12 +101,15 @@ HLEN | MYREDISKEY |
 HGET | MYREDISKEY | 956
 HDEL | MYREDISKEY | 956
 
+</details>
+
 ----------
 
-## Redis Tools:
-The Redis Tools gives you some tools, to simplify common tasks.
+## Redis Tools
+RedUST has additional Tools to simplify different tasks
 
-### RedisListPoller
+<details><summary>**Redis List Poller**</summary>
+
 The Redis list poller provide a async [BLPOP][blpop-explained] or [BRPOP][brpop-explained] for new elements in giving lists.  
 As soon as redis send an element back to the client the class emit the popped()-Signal with the popped element,  
 or the emit the timeout()-Signal (if timeout reached).
@@ -163,10 +168,14 @@ BLPOP | list1 | list2 | 1
 BLPOP | list1 | list2 | 1
 BLPOP | list1 | list2 | 1
 BLPOP | list1 | list2 | 1
-----------
+</details>
+
 ----------
 
-### How to compile the library?
+### Installation
+
+<details><summary>**How to compile the library?**</summary>
+
 **Static:**  
 Add to your Project file:
 ```qmake
@@ -182,6 +191,7 @@ add the following to your pro file:
 ```qmake
 LIBS += -lredust
 ```
+</details>
 
 
 
