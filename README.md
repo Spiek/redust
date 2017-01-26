@@ -64,6 +64,8 @@ int main()
 
     // take element
     qDebug("%s", qPrintable(rhash.take(956)));
+	
+	return 0;
 }
 ```
 Prints:
@@ -138,7 +140,7 @@ int main(int argc, char** argv)
     listPoller.start();
     
     // start event loop
-    a.exec();
+    return a.exec();
 }
 ```
 Prints:
