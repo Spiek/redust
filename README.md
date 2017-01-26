@@ -117,7 +117,7 @@ Example:
 #include <QCoreApplication>
 #include <redust/RedisListPoller>
 
-int main()
+int main(int argc, char** argv)
 {
     // init qt application
     QCoreApplication a(argc, argv);
@@ -130,7 +130,7 @@ int main()
     qDebug("Now we have %i elements in the list list1", server.rpush("list1", {"val1", "val2"}, RedisServer::RequestType::Syncron)->response()->integer());
     qDebug("Now we have %i elements in the list list2", server.rpush("list2", {"val3", "val4"}, RedisServer::RequestType::Syncron)->response()->integer());
 
-    // start list poller for lists test and zuzu with a timeout of 1 second until timeout reached
+    // start list poller for lists "list1" and "list2" with a timeout of 1 second until timeout reached
     RedisListPoller listPoller(server, {"list1", "list2"});
     QObject::connect(&listPoller, &RedisListPoller::popped, [](QByteArray list, QByteArray value) {
         qDebug("Popped %s.%s", qPrintable(list), qPrintable(value));
@@ -143,22 +143,24 @@ int main()
 ```
 Prints:
 ```
-Popped test.bla
-Popped test.blub
-Popped zuzu.blub
-Popped zuzu.bla
+Now we have 2 elements in the list list1
+Now we have 2 elements in the list list2
+Popped list1.val1
+Popped list1.val2
+Popped list2.val3
+Popped list2.val4
 ```
 ... and generates the following Redis Command sequence:
 
 Command  | Parameter 1 | Parameter 2 | Parameter 3
 :-------- | :------- | :--- | :--- 
-LPUSH | zuzu | bla | blub
-RPUSH | test | bla | blub
-BLPOP | test | zuzu | 1
-BLPOP | test | zuzu | 1
-BLPOP | test | zuzu | 1
-BLPOP | test | zuzu | 1
-BLPOP | test | zuzu | 1
+RPUSH | list1 | val1 | val2
+RPUSH | list2 | val3 | val4
+BLPOP | list1 | list2 | 1
+BLPOP | list1 | list2 | 1
+BLPOP | list1 | list2 | 1
+BLPOP | list1 | list2 | 1
+BLPOP | list1 | list2 | 1
 ----------
 ----------
 
