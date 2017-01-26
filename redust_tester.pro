@@ -5,7 +5,7 @@ INCLUDEPATH += src/test
 CONFIG += c++11
 
 # Features
-DEFINES += "REDISMAP_SUPPORT_PROTOBUF"
+REDUST_SUPPORT_PROTOBUF=1
 
 # Google protobuffer Test messages
 HEADERS += test/test.pb.h

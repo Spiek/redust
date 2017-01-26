@@ -1,7 +1,7 @@
 #include <QtTest/QtTest>
 
-#include "redust/redishash.h"
 #include "redust/redisserver.h"
+#include "redust/redishash.h"
 #include "redust/redislistpoller.h"
 
 // const variables
@@ -20,14 +20,16 @@ template<typename Key, typename Value>
 class TestTemplateHelper
 {
     public:
-        static void hashInsert(QMap<Key, Value>& data, int keyIndex, bool sync, bool binarizeKey = true, bool binarizeValue = true)
+        static void hashInsert(QMap<Key, Value>& data, int keyIndex, RedisServer::RequestType mode, bool binarizeKey = true, bool binarizeValue = true)
         {
             QByteArray strHash = GENKEYNAME(keyIndex);
-            QString strMode = !sync ? "asyncron" : "syncron";
+            QString strMode = mode == RedisServer::RequestType::PipeLine ? "pipeline" :
+                              mode == RedisServer::RequestType::Asyncron ? "asyncron" :
+                              mode == RedisServer::RequestType::Syncron  ? "syncron" : "";
             qInfo("Insert %i values into RedisHash<%s,%s>(\"%s\") (%s)", data.count(), typeid(Key).name(), typeid(Value).name(), qPrintable(strHash), qPrintable(strMode));
             RedisHash<Key, Value> rHash(redisServer, strHash, binarizeKey, binarizeValue);
             for(auto itr = data.begin(); itr != data.end(); itr++) {
-                if(!rHash.insert(itr.key(), itr.value(), sync)) {
+                if(!rHash.insert(itr.key(), itr.value(), mode)) {
                     FAIL(QString("Failed to insert %1 into %2 (Key,Value):%3,%4")
                          .arg(strMode)
                          .arg(strHash.data())
@@ -37,35 +39,21 @@ class TestTemplateHelper
                 }
             }
 
+            // execute pipeline request
+            if(mode == RedisServer::RequestType::PipeLine) redisServer.executePipeline();
 
             // if we insert the data async, we wait until all set operations are processed by redis before continue
-            if(!sync) {
-                QTcpSocket* socket = redisServer.requestConnection(RedisServer::ConnectionType::WriteOnly);
-
-                // wait syncron until all data was written to the redis server
-                // Note: to work around random write fails on windows, we waitForBytesWritten until it succeed
-                while(socket->bytesToWrite()) while(!socket->waitForBytesWritten());
-
+            else if(mode == RedisServer::RequestType::Asyncron) {
                 // after all data was written to redis, we check constantly if all data were inserted into redis
                 // after every check we wait one second (a)syncron, if no data was inserted during 10 checks, we fail
-                int oldCount = 0;
-                int failed = 0;
-                int localDataCount = data.count();
-                while(true) {
-                    int count = rHash.count();
-                    if(count == localDataCount) break;
-
-                    // handle fail
-                    failed = count == oldCount ? failed + 1 : 0;
-                    if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
-
-                    // wait for redis to process requests
-                    qInfo(" - Wait additional second for redis to process our inserts (%d / %d allready inserted!)...", count, localDataCount);
+                for(int failed = 0; failed <= 10; failed++) {
+                    if(rHash.count() == data.count()) break;
                     QTest::qWait(1000);
-
-                    oldCount = count;
+                    if(failed == 10) FAIL(" - We have pooled 10 seconds for insert changes, nothing happened so giving up...");
                 }
             }
+
+            VERIFY2(rHash.count() == data.count(), QString("Expect a list with %1-entries, but just got %2").arg(data.count()).arg(rHash.count()));
         }
 
         static void hashCheck(QMap<Key, Value> data, int keyIndex, bool binarizeKey = true, bool binarizeValue = true)
@@ -157,7 +145,7 @@ class TestTemplateHelper
             qInfo(" - Loop and take all elements one by one (check the returned values if it exists in the list), until the list is empty");
             for(Key key : data.keys()) {
                 bool result = false;
-                if(data.value(key) != rHash.take(key, true, &result) || !result) {
+                if(data.value(key) != rHash.take(key, RedisServer::RequestType::Syncron, &result) || !result) {
                     FAIL(QString("A Check Failed:\nstored: %1,%2\nValue of hashmap for key (if exists):%3")
                          .arg(TypeSerializer<Key>::serialize(key, binarizeKey).toHex().data())
                          .arg(TypeSerializer<Value>::serialize(rHash.value(key), binarizeValue).toHex().data())
@@ -191,8 +179,8 @@ void TestRedisHash::initTestCase()
 
 void TestRedisHash::clear()
 {
-    for(QByteArray key : RedisInterface::keys(redisServer, GENKEYNAME("") + "*")) {
-        if(RedisInterface::del(redisServer, key, false)) qInfo("Delete key %s", qPrintable(key));
+    for(QByteArray key : redisServer.keys(GENKEYNAME("") + "*")->response()->array()) {
+        if(!redisServer.del(key)->hasError()) qInfo("Delete key %s", qPrintable(key));
         else FAIL(QString("Cannot Delete key %1").arg(QString(key)));
     }
 }
@@ -200,21 +188,21 @@ void TestRedisHash::clear()
 void TestRedisHash::redispoller()
 {
     // init vars
-    int pushValuesCount = GENINTRANDRANGE(2234,24543);
+    int pushValuesCount = 10000;
 
     // init poller and signal spyer
-    RedisListPoller poller(redisServer, {"hallo", "test"}, 1, RedisListPoller::PollTimeType::UntilTimeout, RedisInterface::Position::Begin);
+    RedisListPoller poller(redisServer, {"hallo", "test"}, RedisListPoller::PollTimeType::UntilTimeout, 1);
     QSignalSpy spy(&poller, SIGNAL(popped(QByteArray,QByteArray)));
     poller.start();
 
     // push pushValuesCount left
     for(int i = 0; i < pushValuesCount; i++) {
-        RedisInterface::push(redisServer, "hallo", QByteArray::fromRawData((char*)&i, sizeof(int)));
+        redisServer.lpush("hallo", QByteArray::fromRawData((char*)&i, sizeof(int)));
     }
 
     // push pushValuesCount right
     for(int i = 0; i < pushValuesCount; i++) {
-        RedisInterface::push(redisServer, "test", QByteArray::fromRawData((char*)&i, sizeof(int)), RedisInterface::Position::End);
+        redisServer.rpush("test", QByteArray::fromRawData((char*)&i, sizeof(int)));
     }
 
     // wait until timeout reached
@@ -240,12 +228,11 @@ void TestRedisHash::hash()
             i++;
             data.insert(i + GENFLOATRANDRANGE(0, 0.9), i + GENINTRANDRANGE(2343, 2324252) + GENFLOATRANDRANGE(0, 0.9));
         };
-        TestTemplateHelper<float, double>::hashInsert(data, ++index, false, true, true);
-        TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
-        qInfo();
-        TestTemplateHelper<float, double>::hashInsert(data, ++index, true, true, true);
-        TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
-        qInfo();
+        for(RedisServer::RequestType type : {RedisServer::RequestType::PipeLine, RedisServer::RequestType::Asyncron, RedisServer::RequestType::Syncron}) {
+            TestTemplateHelper<float, double>::hashInsert(data, ++index, type, true, true);
+            TestTemplateHelper<float, double>::hashCheck(data, index, true, true);
+            qInfo();
+        }
     }
 
     // <QByteArray, int>-Test
@@ -258,12 +245,11 @@ void TestRedisHash::hash()
             }
             data.insert(content, GENINTRANDRANGE(563,545321));
         };
-
-        TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, false, true, true);
-        TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
-        qInfo();
-        TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, true, true, true);
-        TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
+        for(RedisServer::RequestType type : {RedisServer::RequestType::PipeLine, RedisServer::RequestType::Asyncron, RedisServer::RequestType::Syncron}) {
+            TestTemplateHelper<QByteArray, int>::hashInsert(data, ++index, type, true, true);
+            TestTemplateHelper<QByteArray, int>::hashCheck(data, index, true, true);
+            qInfo();
+        }
     }
 }
 
