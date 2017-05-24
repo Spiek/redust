@@ -17,7 +17,7 @@ All Redis Templates are able to handle the following Template types as Key or Va
  - All classes which inherits from google::protobuf::Message
  - All Integral Types are able to become serialized into binary or string format
 
-<details><summary>**Redis Hash** - [QHash][qhash-public-signature] like Redis interface </summary>
+<details><summary>Redis Hash - QHash like interface to Redis</summary>
 
 RedisHash< Key, Value > - Hash-table-based dictionary
 The following characteristics apply:
@@ -109,7 +109,7 @@ HDEL | MYREDISKEY | 956
 RedUST has additional Tools to simplify different tasks
 
 
-<details><summary>**RedisServer** - redis server network/command interface</summary>
+<details><summary>RedisServer - redis server network/command interface</summary>
 
 The RediServer act as redis interface, it handles redis network connections and gives easy high level access to all kind of redis commands.
 
@@ -203,7 +203,7 @@ HMSET | myhash | myfirstkey | myfirstvalue
 HGET | myhash | myfirstkey
 </details>
 
-<details><summary>**RedisListPoller** - async blocking pop</summary>
+<details><summary>RedisListPoller - async blocking pop</summary>
 
 The Redis list poller provide a async [BLPOP][blpop-explained] or [BRPOP][brpop-explained] for new elements in giving lists.  
 As soon as redis send an element back to the client the class emit the popped()-Signal with the popped element,  
@@ -269,7 +269,7 @@ BLPOP | list1 | list2 | 1
 
 ### Installation
 
-<details><summary>**How to compile the library?**</summary>
+<details><summary>How to compile the library?</summary>
 
 **Static:**  
 Add to your Project file:
