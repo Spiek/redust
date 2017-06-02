@@ -292,6 +292,11 @@ LIBS += -lredust
 
 [//]: # 
 
+----------
+
+### Licence
+The [Redust licence](https://github.com/Spiek/redust/blob/master/LICENCE) is a modified version of the [LGPL](http://www.gnu.org/licenses/lgpl.html) licence, with a static linking exception.
+
 [redis-hashes-explained]: <http://redis.io/topics/data-types#hashes>
 [qhash-public-signature]: <http://doc.qt.io/qt-5/qhash.html#public-functions>
 [blpop-explained]: <http://redis.io/commands/BLPOP>
