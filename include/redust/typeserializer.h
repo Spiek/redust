@@ -14,33 +14,35 @@
     #include <google/protobuf/message.h>
 #endif
 
-// Template to normalize T to Value Type
-template< typename T>
-struct ValueType
-{ typedef T type; };
+namespace TemplateHelper
+{
+    // Template to normalize T to Value Type
+    template< typename T>
+    struct ValueType
+    { typedef T type; };
 
-template< typename T>
-struct ValueType<T*>
-{  typedef typename std::remove_pointer<T>::type type; };
+    template< typename T>
+    struct ValueType<T*>
+    {  typedef typename std::remove_pointer<T>::type type; };
 
-template< typename T>
-struct ValueType<T&>
-{  typedef typename std::remove_reference<T>::type type; };
+    template< typename T>
+    struct ValueType<T&>
+    {  typedef typename std::remove_reference<T>::type type; };
 
+    // Template to normalize T to Value or Reference Type
+    template< typename T>
+    struct ValueRefType
+    { typedef T type; };
 
-// Template to normalize T to Value or Reference Type
-template< typename T>
-struct ValueRefType
-{ typedef T type; };
-
-template< typename T>
-struct ValueRefType<T*>
-{  typedef typename std::remove_pointer<T>::type type; };
+    template< typename T>
+    struct ValueRefType<T*>
+    {  typedef typename std::remove_pointer<T>::type type; };
+}
 
 // Type normalisations helper macros
-#define NORM2VALUE(T) typename ValueType<T>::type
-#define NORM2REFORVALUE(T) typename ValueRefType<T>::type
-#define NORM2POINTER(T) typename ValueType<T>::type*
+#define NORM2VALUE(T) typename TemplateHelper::ValueType<T>::type
+#define NORM2REFORVALUE(T) typename TemplateHelper::ValueRefType<T>::type
+#define NORM2POINTER(T) typename TemplateHelper::ValueType<T>::type*
 
 /* Parser for QVariant and arithmetic types */
 template< typename T, typename Enable = void >
@@ -75,6 +77,29 @@ class TypeSerializer
             return t;
         }
         static inline NORM2VALUE(T) deserialize(QByteArray  value, bool binarize) { return TypeSerializer<T>::deserialize(&value, binarize); }
+};
+
+/* Parser for Custom type */
+struct RedisCustomType
+{
+    virtual QByteArray serialize(bool binarize) = 0;
+    virtual void deserialize(QByteArray& content, bool binarize) = 0;
+};
+
+template<typename T>
+class TypeSerializer<T, typename std::enable_if<std::is_base_of<RedisCustomType, NORM2VALUE(T)>::value>::type >
+{
+    public:
+        static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
+            return value->serialize(binarize);
+        }
+        static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
+        static NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
+            T t;
+            t.deserialize(*value, binarize);
+            return t;
+        }
+        static inline NORM2VALUE(T) deserialize(QByteArray value, bool binarize) { return TypeSerializer<T>::deserialize(&value, binarize); }
 };
 
 #ifdef REDISMAP_SUPPORT_PROTOBUF
