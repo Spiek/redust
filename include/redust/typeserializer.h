@@ -49,7 +49,7 @@ template< typename T, typename Enable = void >
 class TypeSerializer
 {
     public:
-        static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
+        static QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
             if(!value) return QByteArray();
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
                 NORM2VALUE(T) t = sizeof(NORM2VALUE(T)) == 1 ? *value : qToBigEndian<NORM2VALUE(T)>(*value);
@@ -61,10 +61,13 @@ class TypeSerializer
                 while((std::size_t)(data - (char*)(void*)&t) < sizeof(NORM2VALUE(T)) - 1 && !*data) data++;
 
                 return QByteArray(data, sizeof(NORM2VALUE(T)) - (data - (char*)(void*)&t));
-            } else return QVariant(*value).value<QByteArray>();
+            }
+
+            // serialize via QVariant
+            return QVariant(*value).value<QByteArray>();
         }
         static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
-        static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
+        static NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             NORM2VALUE(T) t = {};
             if(!value) return t;
             if(binarize && std::is_integral<NORM2VALUE(T)>::value) {
@@ -109,7 +112,7 @@ template<typename T>
 class TypeSerializer<T, typename std::enable_if<std::is_base_of<google::protobuf::Message, NORM2VALUE(T)>::value>::type >
 {
     public:
-        static inline QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
+        static QByteArray serialize(NORM2VALUE(T)* value, bool binarize) {
             Q_UNUSED(binarize);
             QByteArray data;
             if(!value) return data;
@@ -118,7 +121,7 @@ class TypeSerializer<T, typename std::enable_if<std::is_base_of<google::protobuf
             return data;
         }
         static inline QByteArray serialize(NORM2REFORVALUE(T) value, bool binarize) { return TypeSerializer<T>::serialize(&value, binarize); }
-        static inline NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
+        static NORM2VALUE(T) deserialize(QByteArray* value, bool binarize) {
             Q_UNUSED(binarize);
             NORM2VALUE(T) t;
             if(!value) return t;
